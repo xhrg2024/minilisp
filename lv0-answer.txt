@@ -1,0 +1,53 @@
+1. 为什么 Tokenizer::tokenize 接受的形参类型是 const std::string& 而不是 std::string？可不可以用 std::string&？
+
+Tokenizer::tokenize 只是读取输入字符串，不需要修改它，所以用 const std::string& 最合适：它既避免了拷贝，也保证函数内部不会改动参数。
+
+不适合改成 std::string&，因为非常量左值引用不能绑定到临时对象，也不能绑定到 const 字符串。这样会让调用变得不方便，例如 Tokenizer::tokenize("(a b)") 这种直接传字面量构造出来的临时字符串就无法调用。此外，也可能导致意外的对input读入数据的修改。
+
+从语义上看，这个参数是“输入只读数据”，所以 const std::string& 比 std::string& 更符合设计。
+
+2. 为什么使用 TokenPtr，也即 std::unique_ptr<Token>？如果改用 Token*，会有什么影响？
+
+使用 std::unique_ptr<Token> 的原因是明确所有权。tokenize 返回一串动态创建出来的 Token 对象，unique_ptr 能自动释放内存，避免泄漏；同时它也表达了“这个 token 只归当前容器所有”这样的意图。
+
+如果改用 Token*，程序仍然可以工作，但会失去自动内存管理：
+需要手动 new 和 delete，容易忘记释放；
+一旦中途抛异常，就更容易泄漏；
+所有权也会变得不清楚，后面谁负责销毁对象不再明确。
+
+3. main 函数中 std::cout << *token 是如何实现的？
+
+token 是 TokenPtr，也就是 std::unique_ptr<Token>。*token 解引用以后得到的是一个 Token&。
+
+在 token.cpp 里定义了：
+std::ostream& operator<<(std::ostream& os, const Token& token)
+
+这个运算符内部直接调用 token.toString()，所以 std::cout << *token 最终就是把 Token 对象转成字符串再输出。
+
+对于派生类 Token，比如 BooleanLiteralToken、NumericLiteralToken、StringLiteralToken、IdentifierToken，它们都重写了 toString()，因此输出时会自动得到具体类型对应的文本。
+
+4. 当词法分析出现错误时，程序是如何进行错误处理的？
+
+tokenizer.cpp 里会在出错时直接抛出 SyntaxError，这个类继承自 std::runtime_error。比如：
+字符串没有闭合时抛出 "Unexpected end of string literal"；
+遇到 # 后面不是 t 或 f 时抛出 "Unexpected character after #"。
+
+main 函数用 try/catch 包住整个交互循环，捕获 std::runtime_error& e，然后向标准错误输出：
+Error: <错误信息>
+
+这样做的效果是：当前轮输入失败后不会让程序崩溃，而是打印错误并继续回到提示符，等待下一次输入。
+
+5. 使用 std::deque<TokenPtr> 相比 std::vector<TokenPtr> 的好处是什么？
+
+用 deque 的一个明显好处，是它很适合从前面不断消费 token的模式。Lisp语言使用前缀表达式，工程里后续解析时会不断从容器前端取出 token，deque 的 pop_front 是高效的；如果用 vector，前端删除通常要移动后面的元素，代价更高。
+
+另外，deque 的元素在扩容时整体移动行为和 vector 不一样，更适合做队列式的数据结构。
+
+在这个 tokenizer 里，当前代码主要是 push_back 生成 token 序列，真正体现 deque 优势的地方是在后面的语法分析阶段。
+
+6. 对目前程序结构的理解
+
+当前程序大致分成三层：
+token.h / tokenizer.h / tokenizer.cpp 负责把源代码字符串切成 token；
+token.cpp 负责 token 的具体类型、打印和构造；
+main.cpp 是一个简单的交互式测试入口，反复读取一行输入，把 tokenize 结果打印出来。
