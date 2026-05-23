@@ -2,8 +2,15 @@
 #define VALUE_H
 
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <string>
+#include <vector>
+
+class Value;
+
+using ValuePtr = std::shared_ptr<Value>;
+using BuiltinFuncType = ValuePtr(const std::vector<ValuePtr>&);
 
 class Value {
 protected:
@@ -12,9 +19,17 @@ protected:
 public:
     virtual ~Value() = default;
     virtual std::string toString() const = 0;
+    virtual bool isNil() const;
+    virtual bool isSelfEvaluating() const;
+    virtual bool isNumber() const;
+    virtual bool isBoolean() const;
+    virtual bool isString() const;
+    virtual bool isPair() const;
+    virtual std::optional<std::string> asSymbol() const;
+    virtual std::optional<double> asNumber() const;
+    virtual std::vector<ValuePtr> toVector() const;
+    virtual bool isProcedure() const;
 };
-
-using ValuePtr = std::shared_ptr<Value>;
 
 class BooleanValue : public Value {
 private:
@@ -24,6 +39,8 @@ public:
     explicit BooleanValue(bool value);
 
     bool getValue() const;
+    bool isBoolean() const override;
+    bool isSelfEvaluating() const override;
     std::string toString() const override;
 };
 
@@ -35,6 +52,9 @@ public:
     explicit NumericValue(double value);
 
     double getValue() const;
+    bool isNumber() const override;
+    std::optional<double> asNumber() const override;
+    bool isSelfEvaluating() const override;
     std::string toString() const override;
 };
 
@@ -46,6 +66,8 @@ public:
     explicit StringValue(const std::string& value);
 
     const std::string& getValue() const;
+    bool isString() const override;
+    bool isSelfEvaluating() const override;
     std::string toString() const override;
 };
 
@@ -53,6 +75,7 @@ class NilValue : public Value {
 public:
     NilValue();
 
+    bool isNil() const override;
     std::string toString() const override;
 };
 
@@ -64,6 +87,7 @@ public:
     explicit SymbolValue(const std::string& name);
 
     const std::string& getName() const;
+    std::optional<std::string> asSymbol() const override;
     std::string toString() const override;
 };
 
@@ -77,6 +101,21 @@ public:
 
     const std::shared_ptr<Value>& getLeft() const;
     const std::shared_ptr<Value>& getRight() const;
+    bool isPair() const override;
+    std::vector<ValuePtr> toVector() const override;
+    std::string toString() const override;
+};
+
+class BuiltinProcValue : public Value {
+private:
+    BuiltinFuncType* func;
+
+public:
+    explicit BuiltinProcValue(BuiltinFuncType* func);
+
+    bool isSelfEvaluating() const override;
+    bool isProcedure() const override;
+    ValuePtr call(const std::vector<ValuePtr>& args) const;
     std::string toString() const override;
 };
 

@@ -4,9 +4,23 @@
 #include <iomanip>
 #include <sstream>
 
+#include "./error.h"
+
 namespace {
 
 std::string valueToString(const Value& value);
+
+std::vector<ValuePtr> pairToVector(const PairValue& value) {
+    std::vector<ValuePtr> result{value.getLeft()};
+    auto tail = value.getRight();
+    if (auto pair = dynamic_cast<const PairValue*>(tail.get()); pair != nullptr) {
+        auto more = pairToVector(*pair);
+        result.insert(result.end(), more.begin(), more.end());
+    } else if (dynamic_cast<const NilValue*>(tail.get()) == nullptr) {
+        throw LispError("Expected a proper list.");
+    }
+    return result;
+}
 
 std::string formatPairTail(const Value& value) {
     if (dynamic_cast<const NilValue*>(&value) != nullptr) {
@@ -46,10 +60,58 @@ std::string valueToString(const Value& value) {
 
 }  // namespace
 
+bool Value::isNil() const {
+    return false;
+}
+
+bool Value::isSelfEvaluating() const {
+    return false;
+}
+
+bool Value::isNumber() const {
+    return false;
+}
+
+bool Value::isBoolean() const {
+    return false;
+}
+
+bool Value::isString() const {
+    return false;
+}
+
+bool Value::isPair() const {
+    return false;
+}
+
+std::optional<double> Value::asNumber() const {
+    return std::nullopt;
+}
+
+std::optional<std::string> Value::asSymbol() const {
+    return std::nullopt;
+}
+
+std::vector<ValuePtr> Value::toVector() const {
+    throw LispError("Expected a list.");
+}
+
+bool Value::isProcedure() const {
+    return false;
+}
+
 BooleanValue::BooleanValue(bool value) : value{value} {}
 
 bool BooleanValue::getValue() const {
     return value;
+}
+
+bool BooleanValue::isBoolean() const {
+    return true;
+}
+
+bool BooleanValue::isSelfEvaluating() const {
+    return true;
 }
 
 std::string BooleanValue::toString() const {
@@ -60,6 +122,18 @@ NumericValue::NumericValue(double value) : value{value} {}
 
 double NumericValue::getValue() const {
     return value;
+}
+
+bool NumericValue::isNumber() const {
+    return true;
+}
+
+std::optional<double> NumericValue::asNumber() const {
+    return value;
+}
+
+bool NumericValue::isSelfEvaluating() const {
+    return true;
 }
 
 std::string NumericValue::toString() const {
@@ -78,6 +152,14 @@ const std::string& StringValue::getValue() const {
     return value;
 }
 
+bool StringValue::isString() const {
+    return true;
+}
+
+bool StringValue::isSelfEvaluating() const {
+    return true;
+}
+
 std::string StringValue::toString() const {
     std::ostringstream ss;
     ss << std::quoted(value);
@@ -86,6 +168,10 @@ std::string StringValue::toString() const {
 
 NilValue::NilValue() = default;
 
+bool NilValue::isNil() const {
+    return true;
+}
+
 std::string NilValue::toString() const {
     return "()";
 }
@@ -93,6 +179,10 @@ std::string NilValue::toString() const {
 SymbolValue::SymbolValue(const std::string& name) : name{name} {}
 
 const std::string& SymbolValue::getName() const {
+    return name;
+}
+
+std::optional<std::string> SymbolValue::asSymbol() const {
     return name;
 }
 
@@ -111,8 +201,34 @@ const std::shared_ptr<Value>& PairValue::getRight() const {
     return right;
 }
 
+bool PairValue::isPair() const {
+    return true;
+}
+
+std::vector<ValuePtr> PairValue::toVector() const {
+    return pairToVector(*this);
+}
+
 std::string PairValue::toString() const {
     return valueToString(*this);
+}
+
+BuiltinProcValue::BuiltinProcValue(BuiltinFuncType* func) : func{func} {}
+
+bool BuiltinProcValue::isSelfEvaluating() const {
+    return true;
+}
+
+bool BuiltinProcValue::isProcedure() const {
+    return true;
+}
+
+ValuePtr BuiltinProcValue::call(const std::vector<ValuePtr>& args) const {
+    return (*func)(args);
+}
+
+std::string BuiltinProcValue::toString() const {
+    return "#<procedure>";
 }
 
 std::ostream& operator<<(std::ostream& os, const Value& value) {
