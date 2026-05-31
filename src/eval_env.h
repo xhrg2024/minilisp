@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "./builtins.h"
+#include "./forms.h"
 #include "./value.h"
 
 class EvalEnv {
@@ -16,6 +17,8 @@ private:
 
 public:
     EvalEnv();
+
+    void addSymbol(const std::string& name, ValuePtr value);
 
     ValuePtr eval(ValuePtr expr);
     ValuePtr apply(ValuePtr proc, std::vector<ValuePtr> args);

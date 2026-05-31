@@ -231,6 +231,29 @@ std::string BuiltinProcValue::toString() const {
     return "#<procedure>";
 }
 
+LambdaValue::LambdaValue(std::vector<ValuePtr> params, std::vector<ValuePtr> body)
+    : params{std::move(params)}, body{std::move(body)} {}
+
+bool LambdaValue::isSelfEvaluating() const {
+    return true;
+}
+
+bool LambdaValue::isProcedure() const {
+    return true;
+}
+
+const std::vector<ValuePtr>& LambdaValue::getParams() const {
+    return params;
+}
+
+const std::vector<ValuePtr>& LambdaValue::getBody() const {
+    return body;
+}
+
+std::string LambdaValue::toString() const {
+    return "#<procedure>";
+}
+
 std::ostream& operator<<(std::ostream& os, const Value& value) {
     return os << value.toString();
 }

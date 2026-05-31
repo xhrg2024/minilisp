@@ -5,11 +5,16 @@
 #include <utility>
 
 #include "./error.h"
+#include "./forms.h"
 
 EvalEnv::EvalEnv() {
     for (const auto& [name, func] : BUILTIN_FUNCTIONS) {
         symbols.emplace(name, std::make_shared<BuiltinProcValue>(func));
     }
+}
+
+void EvalEnv::addSymbol(const std::string& name, ValuePtr value) {
+    symbols[name] = std::move(value);
 }
 
 std::vector<ValuePtr> EvalEnv::evalList(ValuePtr expr) {
@@ -49,25 +54,17 @@ ValuePtr EvalEnv::eval(ValuePtr expr) {
         throw LispError("Evaluating nil is prohibited.");
     }
 
-    if (auto head = values.front()->asSymbol(); head && *head == "define") {
-        if (values.size() != 3) {
-            throw LispError("Malformed define.");
+    if (auto head = values.front()->asSymbol()) {
+        auto iter = SPECIAL_FORMS.find(*head);
+        if (iter != SPECIAL_FORMS.end()) {
+            return iter->second(std::vector<ValuePtr>(values.begin() + 1, values.end()), *this);
         }
-
-        if (auto name = values[1]->asSymbol()) {
-            symbols[*name] = eval(values[2]);
-            return std::make_shared<NilValue>();
-        }
-
-        throw LispError("Malformed define.");
     }
 
     auto proc = eval(values.front());
     std::vector<ValuePtr> args;
     if (values.size() > 1) {
-        auto tail = expr->toVector();
-        tail.erase(tail.begin());
-        std::ranges::transform(tail, std::back_inserter(args), [this](ValuePtr value) {
+        std::ranges::transform(values.begin() + 1, values.end(), std::back_inserter(args), [this](ValuePtr value) {
             return this->eval(std::move(value));
         });
     }

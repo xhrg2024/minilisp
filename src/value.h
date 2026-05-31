@@ -119,6 +119,21 @@ public:
     std::string toString() const override;
 };
 
+class LambdaValue : public Value {
+private:
+    std::vector<ValuePtr> params;
+    std::vector<ValuePtr> body;
+
+public:
+    LambdaValue(std::vector<ValuePtr> params, std::vector<ValuePtr> body);
+
+    bool isSelfEvaluating() const override;
+    bool isProcedure() const override;
+    const std::vector<ValuePtr>& getParams() const;
+    const std::vector<ValuePtr>& getBody() const;
+    std::string toString() const override;
+};
+
 std::ostream& operator<<(std::ostream& os, const Value& value);
 
 #endif
