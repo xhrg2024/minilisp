@@ -25,13 +25,13 @@ ValuePtr quoteForm(const std::vector<ValuePtr>& args, EvalEnv&) {
     return args.front();
 }
 
-ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv&) {
+ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() < 2) {
         throw LispError("Malformed lambda.");
     }
     auto params = args.front()->toVector();
     auto body = takeTail(args, 1);
-    return std::make_shared<LambdaValue>(std::move(params), std::move(body));
+    return std::make_shared<LambdaValue>(std::move(params), std::move(body), env.shared_from_this());
 }
 
 ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -43,7 +43,7 @@ ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
         if (args.size() != 2) {
             throw LispError("Malformed define.");
         }
-        env.addSymbol(*name, env.eval(args[1]));
+        env.defineBinding(*name, env.eval(args[1]));
         return std::make_shared<NilValue>();
     }
 
@@ -62,7 +62,7 @@ ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
     std::vector<ValuePtr> params(head.begin() + 1, head.end());
     std::vector<ValuePtr> body(args.begin() + 1, args.end());
-    env.addSymbol(*name, std::make_shared<LambdaValue>(std::move(params), std::move(body)));
+    env.defineBinding(*name, std::make_shared<LambdaValue>(std::move(params), std::move(body), env.shared_from_this()));
     return std::make_shared<NilValue>();
 }
 

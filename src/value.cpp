@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "./error.h"
+#include "./eval_env.h"
 
 namespace {
 
@@ -231,8 +232,9 @@ std::string BuiltinProcValue::toString() const {
     return "#<procedure>";
 }
 
-LambdaValue::LambdaValue(std::vector<ValuePtr> params, std::vector<ValuePtr> body)
-    : params{std::move(params)}, body{std::move(body)} {}
+LambdaValue::LambdaValue(std::vector<ValuePtr> params, std::vector<ValuePtr> body,
+                         std::shared_ptr<EvalEnv> parent)
+    : params{std::move(params)}, body{std::move(body)}, parent{std::move(parent)} {}
 
 bool LambdaValue::isSelfEvaluating() const {
     return true;
@@ -248,6 +250,10 @@ const std::vector<ValuePtr>& LambdaValue::getParams() const {
 
 const std::vector<ValuePtr>& LambdaValue::getBody() const {
     return body;
+}
+
+std::shared_ptr<EvalEnv> LambdaValue::getEnv() const {
+    return parent;
 }
 
 std::string LambdaValue::toString() const {

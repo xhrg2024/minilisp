@@ -119,18 +119,23 @@ public:
     std::string toString() const override;
 };
 
+class EvalEnv;
+
 class LambdaValue : public Value {
 private:
     std::vector<ValuePtr> params;
     std::vector<ValuePtr> body;
+    std::shared_ptr<EvalEnv> parent;
 
 public:
-    LambdaValue(std::vector<ValuePtr> params, std::vector<ValuePtr> body);
+    LambdaValue(std::vector<ValuePtr> params, std::vector<ValuePtr> body,
+                std::shared_ptr<EvalEnv> parent);
 
     bool isSelfEvaluating() const override;
     bool isProcedure() const override;
     const std::vector<ValuePtr>& getParams() const;
     const std::vector<ValuePtr>& getBody() const;
+    std::shared_ptr<EvalEnv> getEnv() const;
     std::string toString() const override;
 };
 
