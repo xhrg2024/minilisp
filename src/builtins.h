@@ -33,6 +33,17 @@ ValuePtr maxProc(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr minProc(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr gcdProc(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr lcmProc(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr stringAppendProc(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr stringLengthProc(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr stringRefProc(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr substringProc(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr stringEqProc(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr stringLessProc(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr stringGreaterProc(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr numToStringProc(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr stringToNumProc(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr stringUpcaseProc(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr stringDowncaseProc(const std::vector<ValuePtr>& args, EvalEnv& env);
 
 ValuePtr print(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr display(const std::vector<ValuePtr>& args, EvalEnv& env);

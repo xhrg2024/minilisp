@@ -228,6 +228,106 @@ ValuePtr lcmProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     return std::make_shared<NumericValue>(static_cast<double>(std::lcm(a, b)));
 }
 
+namespace {
+
+const std::string& expectString(const ValuePtr& value, const char* message) {
+    auto str = std::dynamic_pointer_cast<const StringValue>(value);
+    if (!str) throw LispError(message);
+    return str->getValue();
+}
+
+}  // namespace
+
+ValuePtr stringAppendProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    std::string result;
+    for (const auto& arg : args)
+        result += expectString(arg, "string-append expects string arguments.");
+    return std::make_shared<StringValue>(result);
+}
+
+ValuePtr stringLengthProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 1, "string-length");
+    return std::make_shared<NumericValue>(
+        static_cast<double>(expectString(args[0], "string-length expects a string.").size()));
+}
+
+ValuePtr stringRefProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 2, "string-ref");
+    const auto& s = expectString(args[0], "string-ref expects a string.");
+    auto idx = static_cast<std::size_t>(expectNumber(args[1], "string-ref expects an index."));
+    if (idx >= s.size()) throw LispError("string-ref: index out of range.");
+    return std::make_shared<StringValue>(std::string(1, s[idx]));
+}
+
+ValuePtr substringProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 3, "substring");
+    const auto& s = expectString(args[0], "substring expects a string.");
+    auto start = static_cast<std::size_t>(expectNumber(args[1], "substring expects a start index."));
+    auto end = static_cast<std::size_t>(expectNumber(args[2], "substring expects an end index."));
+    if (start > s.size() || end > s.size() || start > end)
+        throw LispError("substring: index out of range.");
+    return std::make_shared<StringValue>(s.substr(start, end - start));
+}
+
+ValuePtr stringEqProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 2, "string=?");
+    return makeBool(expectString(args[0], "string=? expects strings.") ==
+                    expectString(args[1], "string=? expects strings."));
+}
+
+ValuePtr stringLessProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 2, "string<?");
+    return makeBool(expectString(args[0], "string<? expects strings.") <
+                    expectString(args[1], "string<? expects strings."));
+}
+
+ValuePtr stringGreaterProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 2, "string>?");
+    return makeBool(expectString(args[0], "string>? expects strings.") >
+                    expectString(args[1], "string>? expects strings."));
+}
+
+ValuePtr numToStringProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 1, "number->string");
+    double val = expectNumber(args[0], "number->string expects a number.");
+    std::string s = std::to_string(val);
+    // 去掉多余尾部零
+    s.erase(s.find_last_not_of('0') + 1, std::string::npos);
+    if (s.back() == '.') s.pop_back();
+    return std::make_shared<StringValue>(s);
+}
+
+ValuePtr stringToNumProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 1, "string->number");
+    const auto& s = expectString(args[0], "string->number expects a string.");
+    try {
+        std::size_t pos = 0;
+        double val = std::stod(s, &pos);
+        if (pos != s.size()) return makeBool(false);
+        return std::make_shared<NumericValue>(val);
+    } catch (...) {
+        return makeBool(false);
+    }
+}
+
+ValuePtr stringUpcaseProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 1, "string-upcase");
+    const auto& s = expectString(args[0], "string-upcase expects a string.");
+    std::string result = s;
+    for (auto& c : result)
+        c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    return std::make_shared<StringValue>(result);
+}
+
+ValuePtr stringDowncaseProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 1, "string-downcase");
+    const auto& s = expectString(args[0], "string-downcase expects a string.");
+    std::string result = s;
+    for (auto& c : result)
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return std::make_shared<StringValue>(result);
+}
+
 
 
 ValuePtr print(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -596,6 +696,17 @@ const std::unordered_map<std::string, BuiltinFuncType*> BUILTIN_FUNCTIONS{
     {"min", &minProc},
     {"gcd", &gcdProc},
     {"lcm", &lcmProc},
+    {"string-append", &stringAppendProc},
+    {"string-length", &stringLengthProc},
+    {"string-ref", &stringRefProc},
+    {"substring", &substringProc},
+    {"string=?", &stringEqProc},
+    {"string<?", &stringLessProc},
+    {"string>?", &stringGreaterProc},
+    {"number->string", &numToStringProc},
+    {"string->number", &stringToNumProc},
+    {"string-upcase", &stringUpcaseProc},
+    {"string-downcase", &stringDowncaseProc},
     {"print", &print},
     {"display", &display},
     {"displayln", &displayln},
