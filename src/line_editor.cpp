@@ -380,6 +380,18 @@ int LineEditor::countOpenParens(const std::string& text) {
 
 std::optional<std::string> LineEditor::readLine(const std::string& prompt,
                                                   int indentHint) {
+    // 非交互模式（管道/重定向）：回退到标准逐行读取
+    if (!useRawMode_) {
+        std::cout << prompt;
+        if (indentHint > 0) std::cout << std::string(indentHint, ' ');
+        std::cout.flush();
+        std::string line;
+        if (!std::getline(std::cin, line)) return std::nullopt;
+        // 去掉 pre-filled indent 后的实际输入
+        std::string result = line;
+        return result;
+    }
+
     enableRawMode();
 
     std::string text;
