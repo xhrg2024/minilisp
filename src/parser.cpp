@@ -69,4 +69,9 @@ ValuePtr Parser::parse() {
         default:
             throw SyntaxError("Unimplemented");
     }
+
+
+}
+bool Parser::hasMore() const {
+    return !tokens.empty();
 }

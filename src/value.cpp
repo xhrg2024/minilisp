@@ -224,8 +224,8 @@ bool BuiltinProcValue::isProcedure() const {
     return true;
 }
 
-ValuePtr BuiltinProcValue::call(const std::vector<ValuePtr>& args) const {
-    return (*func)(args);
+ValuePtr BuiltinProcValue::call(const std::vector<ValuePtr>& args, EvalEnv& env) const {
+    return (*func)(args, env);
 }
 
 std::string BuiltinProcValue::toString() const {

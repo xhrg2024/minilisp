@@ -5,45 +5,64 @@
 #include <unordered_map>
 
 #include "./value.h"
+class EvalEnv;
 
-ValuePtr add(const std::vector<ValuePtr>& args);
-ValuePtr sub(const std::vector<ValuePtr>& args);
-ValuePtr mul(const std::vector<ValuePtr>& args);
-ValuePtr div(const std::vector<ValuePtr>& args);
-ValuePtr absValue(const std::vector<ValuePtr>& args);
-ValuePtr expt(const std::vector<ValuePtr>& args);
-ValuePtr quotient(const std::vector<ValuePtr>& args);
-ValuePtr remainder(const std::vector<ValuePtr>& args);
-ValuePtr print(const std::vector<ValuePtr>& args);
-ValuePtr display(const std::vector<ValuePtr>& args);
-ValuePtr newline(const std::vector<ValuePtr>& args);
-ValuePtr exitProc(const std::vector<ValuePtr>& args);
 
-ValuePtr atomp(const std::vector<ValuePtr>& args);
-ValuePtr booleanp(const std::vector<ValuePtr>& args);
-ValuePtr integerp(const std::vector<ValuePtr>& args);
-ValuePtr listp(const std::vector<ValuePtr>& args);
-ValuePtr numberp(const std::vector<ValuePtr>& args);
-ValuePtr nullp(const std::vector<ValuePtr>& args);
-ValuePtr pairp(const std::vector<ValuePtr>& args);
-ValuePtr procedurep(const std::vector<ValuePtr>& args);
-ValuePtr stringp(const std::vector<ValuePtr>& args);
-ValuePtr symbolp(const std::vector<ValuePtr>& args);
+ValuePtr add(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr sub(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr mul(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr div(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr absValue(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr expt(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr quotient(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr remainder(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr modulo(const std::vector<ValuePtr>& args, EvalEnv& env);
 
-ValuePtr car(const std::vector<ValuePtr>& args);
-ValuePtr cdr(const std::vector<ValuePtr>& args);
-ValuePtr cons(const std::vector<ValuePtr>& args);
-ValuePtr length(const std::vector<ValuePtr>& args);
-ValuePtr list(const std::vector<ValuePtr>& args);
+ValuePtr print(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr display(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr newline(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr displayln(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr errorProc(const std::vector<ValuePtr>& args, EvalEnv& env);
 
-ValuePtr equal(const std::vector<ValuePtr>& args);
-ValuePtr less(const std::vector<ValuePtr>& args);
-ValuePtr greater(const std::vector<ValuePtr>& args);
-ValuePtr lessEqual(const std::vector<ValuePtr>& args);
-ValuePtr greaterEqual(const std::vector<ValuePtr>& args);
-ValuePtr evenp(const std::vector<ValuePtr>& args);
-ValuePtr oddp(const std::vector<ValuePtr>& args);
-ValuePtr zerop(const std::vector<ValuePtr>& args);
+ValuePtr exitProc(const std::vector<ValuePtr>& args, EvalEnv& env);
+
+ValuePtr atomp(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr booleanp(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr integerp(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr listp(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr numberp(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr nullp(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr pairp(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr procedurep(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr stringp(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr symbolp(const std::vector<ValuePtr>& args, EvalEnv& env);
+
+ValuePtr car(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr cdr(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr cons(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr length(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr list(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr append(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr map(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr filter(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr reduce(const std::vector<ValuePtr>& args, EvalEnv& env);
+
+ValuePtr applyProc(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr evalProc(const std::vector<ValuePtr>& args, EvalEnv& env);
+
+
+ValuePtr equalNum(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr less(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr greater(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr lessEqual(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr greaterEqual(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr evenp(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr oddp(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr zerop(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr eqp(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr equalp(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr notp(const std::vector<ValuePtr>& args, EvalEnv& env);
+
 
 extern const std::unordered_map<std::string, BuiltinFuncType*> BUILTIN_FUNCTIONS;
 

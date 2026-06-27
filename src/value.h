@@ -8,9 +8,11 @@
 #include <vector>
 
 class Value;
+class EvalEnv;
+
 
 using ValuePtr = std::shared_ptr<Value>;
-using BuiltinFuncType = ValuePtr(const std::vector<ValuePtr>&);
+using BuiltinFuncType = ValuePtr(const std::vector<ValuePtr>&, EvalEnv&);
 
 class Value {
 protected:
@@ -115,7 +117,7 @@ public:
 
     bool isSelfEvaluating() const override;
     bool isProcedure() const override;
-    ValuePtr call(const std::vector<ValuePtr>& args) const;
+    ValuePtr call(const std::vector<ValuePtr>& args, EvalEnv& env) const;
     std::string toString() const override;
 };
 

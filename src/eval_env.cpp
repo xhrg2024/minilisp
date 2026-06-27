@@ -55,7 +55,7 @@ std::vector<ValuePtr> EvalEnv::evalList(ValuePtr expr) {
 
 ValuePtr EvalEnv::apply(ValuePtr proc, std::vector<ValuePtr> args) {
     if (auto builtin = dynamic_cast<BuiltinProcValue*>(proc.get()); builtin != nullptr) {
-        return builtin->call(args);
+        return builtin->call(args, *this);
     }
     if (auto lambda = dynamic_cast<LambdaValue*>(proc.get()); lambda != nullptr) {
         std::vector<std::string> paramNames;

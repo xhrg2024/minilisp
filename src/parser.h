@@ -19,6 +19,8 @@ public:
     explicit Parser(std::deque<TokenPtr> tokens);
 
     ValuePtr parse();
+    bool hasMore() const;
+
 };
 
 #endif
