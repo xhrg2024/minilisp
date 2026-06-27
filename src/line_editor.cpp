@@ -58,6 +58,8 @@ const std::set<std::string> LISP_KEYWORDS = {
     "define", "lambda", "if", "cond", "let", "begin",
     "quote", "quasiquote", "unquote", "and", "or", "set!",
     "+", "-", "*", "/", "abs", "expt", "quotient", "remainder", "modulo",
+    "sqrt", "sin", "cos", "tan", "asin", "acos", "atan",
+    "log", "exp", "floor", "ceil", "round", "max", "min", "gcd", "lcm",
     "print", "display", "displayln", "newline", "error", "exit",
     "atom?", "boolean?", "integer?", "list?", "number?",
     "null?", "pair?", "procedure?", "string?", "symbol?",

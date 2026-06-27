@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <numeric>
 
 #include "./error.h"
 #include "./eval_env.h"
@@ -127,6 +128,104 @@ ValuePtr modulo(const std::vector<ValuePtr>& args, EvalEnv& env) {
     auto lhs = expectNumber(args[0], "Cannot modulo a non-numeric value.");
     auto rhs = expectNumber(args[1], "Cannot modulo a non-numeric value.");
     return std::make_shared<NumericValue>(lhs - rhs * std::floor(lhs / rhs));
+}
+
+ValuePtr sqrtProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 1, "sqrt");
+    return std::make_shared<NumericValue>(std::sqrt(expectNumber(args[0], "sqrt expects a number.")));
+}
+
+ValuePtr sinProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 1, "sin");
+    return std::make_shared<NumericValue>(std::sin(expectNumber(args[0], "sin expects a number.")));
+}
+
+ValuePtr cosProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 1, "cos");
+    return std::make_shared<NumericValue>(std::cos(expectNumber(args[0], "cos expects a number.")));
+}
+
+ValuePtr tanProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 1, "tan");
+    return std::make_shared<NumericValue>(std::tan(expectNumber(args[0], "tan expects a number.")));
+}
+
+ValuePtr asinProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 1, "asin");
+    return std::make_shared<NumericValue>(std::asin(expectNumber(args[0], "asin expects a number.")));
+}
+
+ValuePtr acosProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 1, "acos");
+    return std::make_shared<NumericValue>(std::acos(expectNumber(args[0], "acos expects a number.")));
+}
+
+ValuePtr atanProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireAtLeast(args, 1, "atan");
+    if (args.size() == 2)
+        return std::make_shared<NumericValue>(std::atan2(
+            expectNumber(args[0], "atan expects numbers."),
+            expectNumber(args[1], "atan expects numbers.")));
+    return std::make_shared<NumericValue>(std::atan(expectNumber(args[0], "atan expects a number.")));
+}
+
+ValuePtr logProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireAtLeast(args, 1, "log");
+    if (args.size() == 2)
+        return std::make_shared<NumericValue>(
+            std::log(expectNumber(args[1], "log expects numbers.")) /
+            std::log(expectNumber(args[0], "log expects numbers.")));
+    return std::make_shared<NumericValue>(std::log(expectNumber(args[0], "log expects a number.")));
+}
+
+ValuePtr expProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 1, "exp");
+    return std::make_shared<NumericValue>(std::exp(expectNumber(args[0], "exp expects a number.")));
+}
+
+ValuePtr floorProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 1, "floor");
+    return std::make_shared<NumericValue>(std::floor(expectNumber(args[0], "floor expects a number.")));
+}
+
+ValuePtr ceilProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 1, "ceil");
+    return std::make_shared<NumericValue>(std::ceil(expectNumber(args[0], "ceil expects a number.")));
+}
+
+ValuePtr roundProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 1, "round");
+    return std::make_shared<NumericValue>(std::round(expectNumber(args[0], "round expects a number.")));
+}
+
+ValuePtr maxProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireAtLeast(args, 1, "max");
+    double result = expectNumber(args[0], "max expects numbers.");
+    for (std::size_t i = 1; i < args.size(); ++i)
+        result = std::max(result, expectNumber(args[i], "max expects numbers."));
+    return std::make_shared<NumericValue>(result);
+}
+
+ValuePtr minProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireAtLeast(args, 1, "min");
+    double result = expectNumber(args[0], "min expects numbers.");
+    for (std::size_t i = 1; i < args.size(); ++i)
+        result = std::min(result, expectNumber(args[i], "min expects numbers."));
+    return std::make_shared<NumericValue>(result);
+}
+
+ValuePtr gcdProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 2, "gcd");
+    int a = static_cast<int>(expectNumber(args[0], "gcd expects integers."));
+    int b = static_cast<int>(expectNumber(args[1], "gcd expects integers."));
+    return std::make_shared<NumericValue>(static_cast<double>(std::gcd(a, b)));
+}
+
+ValuePtr lcmProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    requireArgsSize(args, 2, "lcm");
+    int a = static_cast<int>(expectNumber(args[0], "lcm expects integers."));
+    int b = static_cast<int>(expectNumber(args[1], "lcm expects integers."));
+    return std::make_shared<NumericValue>(static_cast<double>(std::lcm(a, b)));
 }
 
 
@@ -481,6 +580,22 @@ const std::unordered_map<std::string, BuiltinFuncType*> BUILTIN_FUNCTIONS{
     {"quotient", &quotient},
     {"remainder", &remainder},
     {"modulo", &modulo},
+    {"sqrt", &sqrtProc},
+    {"sin", &sinProc},
+    {"cos", &cosProc},
+    {"tan", &tanProc},
+    {"asin", &asinProc},
+    {"acos", &acosProc},
+    {"atan", &atanProc},
+    {"log", &logProc},
+    {"exp", &expProc},
+    {"floor", &floorProc},
+    {"ceil", &ceilProc},
+    {"round", &roundProc},
+    {"max", &maxProc},
+    {"min", &minProc},
+    {"gcd", &gcdProc},
+    {"lcm", &lcmProc},
     {"print", &print},
     {"display", &display},
     {"displayln", &displayln},
