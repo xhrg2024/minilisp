@@ -173,7 +173,14 @@ bool NilValue::isNil() const {
     return true;
 }
 
+std::vector<ValuePtr> NilValue::toVector() const {
+    return {};
+}
+
+
 std::string NilValue::toString() const {
+
+
     return "()";
 }
 

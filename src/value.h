@@ -78,6 +78,8 @@ public:
     NilValue();
 
     bool isNil() const override;
+    std::vector<ValuePtr> toVector() const override;
+
     std::string toString() const override;
 };
 
