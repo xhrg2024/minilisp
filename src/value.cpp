@@ -9,12 +9,11 @@
 
 namespace {
 
-std::string valueToString(const Value& value);
-
 std::vector<ValuePtr> pairToVector(const PairValue& value) {
     std::vector<ValuePtr> result{value.getLeft()};
     auto tail = value.getRight();
-    if (auto pair = dynamic_cast<const PairValue*>(tail.get()); pair != nullptr) {
+    if (auto pair = dynamic_cast<const PairValue*>(tail.get());
+        pair != nullptr) {
         auto more = pairToVector(*pair);
         result.insert(result.end(), more.begin(), more.end());
     } else if (dynamic_cast<const NilValue*>(tail.get()) == nullptr) {
@@ -29,34 +28,11 @@ std::string formatPairTail(const Value& value) {
     }
 
     if (auto pair = dynamic_cast<const PairValue*>(&value); pair != nullptr) {
-        return " " + valueToString(*pair->getLeft()) + formatPairTail(*pair->getRight());
+        return " " + pair->getLeft()->toString() +
+               formatPairTail(*pair->getRight());
     }
 
-    return " . " + valueToString(value) + ")";
-}
-
-std::string valueToString(const Value& value) {
-    if (auto booleanValue = dynamic_cast<const BooleanValue*>(&value); booleanValue != nullptr) {
-        return booleanValue->toString();
-    }
-    if (auto numericValue = dynamic_cast<const NumericValue*>(&value); numericValue != nullptr) {
-        return numericValue->toString();
-    }
-    if (auto stringValue = dynamic_cast<const StringValue*>(&value); stringValue != nullptr) {
-        return stringValue->toString();
-    }
-    if (auto symbolValue = dynamic_cast<const SymbolValue*>(&value); symbolValue != nullptr) {
-        return symbolValue->toString();
-    }
-    if (auto nilValue = dynamic_cast<const NilValue*>(&value); nilValue != nullptr) {
-        return nilValue->toString();
-    }
-    if (auto pairValue = dynamic_cast<const PairValue*>(&value); pairValue != nullptr) {
-        std::ostringstream ss;
-        ss << '(' << valueToString(*pairValue->getLeft()) << formatPairTail(*pairValue->getRight());
-        return ss.str();
-    }
-    return "<unknown>";
+    return " . " + value.toString() + ")";
 }
 
 }  // namespace
@@ -177,10 +153,7 @@ std::vector<ValuePtr> NilValue::toVector() const {
     return {};
 }
 
-
 std::string NilValue::toString() const {
-
-
     return "()";
 }
 
@@ -218,7 +191,9 @@ std::vector<ValuePtr> PairValue::toVector() const {
 }
 
 std::string PairValue::toString() const {
-    return valueToString(*this);
+    std::ostringstream ss;
+    ss << '(' << left->toString() << formatPairTail(*right);
+    return ss.str();
 }
 
 BuiltinProcValue::BuiltinProcValue(BuiltinFuncType* func) : func{func} {}
@@ -231,7 +206,8 @@ bool BuiltinProcValue::isProcedure() const {
     return true;
 }
 
-ValuePtr BuiltinProcValue::call(const std::vector<ValuePtr>& args, EvalEnv& env) const {
+ValuePtr BuiltinProcValue::call(const std::vector<ValuePtr>& args,
+                                EvalEnv& env) const {
     return (*func)(args, env);
 }
 
@@ -239,9 +215,12 @@ std::string BuiltinProcValue::toString() const {
     return "#<procedure>";
 }
 
-LambdaValue::LambdaValue(std::vector<ValuePtr> params, std::vector<ValuePtr> body,
+LambdaValue::LambdaValue(std::vector<ValuePtr> params,
+                         std::vector<ValuePtr> body,
                          std::shared_ptr<EvalEnv> parent)
-    : params{std::move(params)}, body{std::move(body)}, parent{std::move(parent)} {}
+    : params{std::move(params)},
+      body{std::move(body)},
+      parent{std::move(parent)} {}
 
 bool LambdaValue::isSelfEvaluating() const {
     return true;

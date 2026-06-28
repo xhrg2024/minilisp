@@ -4,16 +4,26 @@
 
 #include "./error.h"
 #include "./eval_env.h"
+#include "./lisp_utils.h"
 
 namespace {
 
-bool isFalseValue(const ValuePtr& value) {
-    auto boolean = std::dynamic_pointer_cast<BooleanValue>(value);
-    return boolean != nullptr && !boolean->getValue();
+using LispUtils::isFalseValue;
+using LispUtils::makeBool;
+using LispUtils::makeNil;
+
+std::vector<ValuePtr> takeTail(const std::vector<ValuePtr>& args,
+                               std::size_t start) {
+    return std::vector<ValuePtr>(
+        args.begin() + static_cast<std::ptrdiff_t>(start), args.end());
 }
 
-std::vector<ValuePtr> takeTail(const std::vector<ValuePtr>& args, std::size_t start) {
-    return std::vector<ValuePtr>(args.begin() + static_cast<std::ptrdiff_t>(start), args.end());
+ValuePtr evalSequence(const std::vector<ValuePtr>& expressions, EvalEnv& env) {
+    ValuePtr result = makeNil();
+    for (const auto& expr : expressions) {
+        result = env.eval(expr);
+    }
+    return result;
 }
 
 }  // namespace
@@ -31,7 +41,8 @@ ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     }
     auto params = args.front()->toVector();
     auto body = takeTail(args, 1);
-    return std::make_shared<LambdaValue>(std::move(params), std::move(body), env.shared_from_this());
+    return std::make_shared<LambdaValue>(std::move(params), std::move(body),
+                                         env.shared_from_this());
 }
 
 ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -44,7 +55,7 @@ ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
             throw LispError("Malformed define.");
         }
         env.defineBinding(*name, env.eval(args[1]));
-        return std::make_shared<NilValue>();
+        return makeNil();
     }
 
     if (args.size() < 2) {
@@ -62,8 +73,10 @@ ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
     std::vector<ValuePtr> params(head.begin() + 1, head.end());
     std::vector<ValuePtr> body(args.begin() + 1, args.end());
-    env.defineBinding(*name, std::make_shared<LambdaValue>(std::move(params), std::move(body), env.shared_from_this()));
-    return std::make_shared<NilValue>();
+    env.defineBinding(
+        *name, std::make_shared<LambdaValue>(std::move(params), std::move(body),
+                                             env.shared_from_this()));
+    return makeNil();
 }
 
 ValuePtr ifForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -79,9 +92,9 @@ ValuePtr ifForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
 ValuePtr andForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.empty()) {
-        return std::make_shared<BooleanValue>(true);
+        return makeBool(true);
     }
-    ValuePtr last = std::make_shared<BooleanValue>(true);
+    ValuePtr last = makeBool(true);
     for (const auto& expr : args) {
         last = env.eval(expr);
         if (isFalseValue(last)) {
@@ -93,7 +106,7 @@ ValuePtr andForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
 ValuePtr orForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.empty()) {
-        return std::make_shared<BooleanValue>(false);
+        return makeBool(false);
     }
     for (const auto& expr : args) {
         auto value = env.eval(expr);
@@ -101,7 +114,7 @@ ValuePtr orForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
             return value;
         }
     }
-    return std::make_shared<BooleanValue>(false);
+    return makeBool(false);
 }
 
 ValuePtr condForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -117,30 +130,22 @@ ValuePtr condForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
                 isElse = true;
             }
         }
-        auto condition = isElse ? std::make_shared<BooleanValue>(true) : env.eval(test);
+        auto condition = isElse ? makeBool(true) : env.eval(test);
         if (!isFalseValue(condition)) {
             if (vec.size() == 1) {
                 return condition;
             }
-            ValuePtr result = std::make_shared<NilValue>();
-            for (std::size_t i = 1; i < vec.size(); ++i) {
-                result = env.eval(vec[i]);
-            }
-            return result;
+            return evalSequence(takeTail(vec, 1), env);
         }
     }
-    return std::make_shared<NilValue>();
+    return makeNil();
 }
 
 ValuePtr beginForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.empty()) {
-        return std::make_shared<NilValue>();
+        return makeNil();
     }
-    ValuePtr result = std::make_shared<NilValue>();
-    for (const auto& expr : args) {
-        result = env.eval(expr);
-    }
-    return result;
+    return evalSequence(args, env);
 }
 
 ValuePtr letForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -167,7 +172,8 @@ ValuePtr letForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
         params.push_back(std::make_shared<SymbolValue>(name));
     }
     std::vector<ValuePtr> body(args.begin() + 1, args.end());
-    auto lambda = std::make_shared<LambdaValue>(std::move(params), std::move(body), env.shared_from_this());
+    auto lambda = std::make_shared<LambdaValue>(
+        std::move(params), std::move(body), env.shared_from_this());
     return env.apply(lambda, std::move(paramValues));
 }
 
@@ -189,10 +195,8 @@ ValuePtr quasiquoteWalk(const ValuePtr& expr, EvalEnv& env) {
             return env.eval(vec[0]);
         }
     }
-    return std::make_shared<PairValue>(
-        quasiquoteWalk(car, env),
-        quasiquoteWalk(pair->getRight(), env)
-    );
+    return std::make_shared<PairValue>(quasiquoteWalk(car, env),
+                                       quasiquoteWalk(pair->getRight(), env));
 }
 
 }  // namespace
@@ -204,16 +208,10 @@ ValuePtr quasiquoteForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     return quasiquoteWalk(args[0], env);
 }
 
-
 const std::unordered_map<std::string, SpecialFormType*> SPECIAL_FORMS{
-    {"quote", &quoteForm},
-    {"define", &defineForm},
-    {"if", &ifForm},
-    {"and", &andForm},
-    {"or", &orForm},
-    {"lambda", &lambdaForm},
-    {"cond", &condForm},
-    {"begin", &beginForm},
-    {"let", &letForm},
-    {"quasiquote", &quasiquoteForm},
+    {"quote", &quoteForm}, {"define", &defineForm},
+    {"if", &ifForm},       {"and", &andForm},
+    {"or", &orForm},       {"lambda", &lambdaForm},
+    {"cond", &condForm},   {"begin", &beginForm},
+    {"let", &letForm},     {"quasiquote", &quasiquoteForm},
 };

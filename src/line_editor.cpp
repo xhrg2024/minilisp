@@ -55,24 +55,103 @@ constexpr const char* DEFAULT_COLOR = RESET;
 namespace {
 
 const std::set<std::string> LISP_KEYWORDS = {
-    "define", "lambda", "if", "cond", "let", "begin",
-    "quote", "quasiquote", "unquote", "and", "or", "set!",
-    "+", "-", "*", "/", "abs", "expt", "quotient", "remainder", "modulo",
-    "sqrt", "sin", "cos", "tan", "asin", "acos", "atan",
-    "log", "exp", "floor", "ceil", "round", "max", "min", "gcd", "lcm",
-    "string-append", "string-length", "string-ref", "substring",
-    "string=?", "string<?", "string>?", "number->string",
-    "string->number", "string-upcase", "string-downcase",
-    "print", "display", "displayln", "newline", "error", "exit",
-    "atom?", "boolean?", "integer?", "list?", "number?",
-    "null?", "pair?", "procedure?", "string?", "symbol?",
-    "car", "cdr", "cons", "length", "list", "append",
-    "map", "filter", "reduce", "apply", "eval",
-    "=", "<", ">", "<=", ">=",
-    "even?", "odd?", "zero?", "eq?", "equal?", "not",
-    "graphics-open", "graphics-close", "graphics-clear", "graphics-color",
-    "graphics-line", "graphics-rect", "graphics-circle", "graphics-text",
-    "graphics-refresh", "graphics-poll-event", "graphics-wait-event",
+    "define",
+    "lambda",
+    "if",
+    "cond",
+    "let",
+    "begin",
+    "quote",
+    "quasiquote",
+    "unquote",
+    "and",
+    "or",
+    "set!",
+    "+",
+    "-",
+    "*",
+    "/",
+    "abs",
+    "expt",
+    "quotient",
+    "remainder",
+    "modulo",
+    "sqrt",
+    "sin",
+    "cos",
+    "tan",
+    "asin",
+    "acos",
+    "atan",
+    "log",
+    "exp",
+    "floor",
+    "ceil",
+    "round",
+    "max",
+    "min",
+    "gcd",
+    "lcm",
+    "string-append",
+    "string-length",
+    "string-ref",
+    "substring",
+    "string=?",
+    "string<?",
+    "string>?",
+    "number->string",
+    "string->number",
+    "string-upcase",
+    "string-downcase",
+    "print",
+    "display",
+    "displayln",
+    "newline",
+    "error",
+    "exit",
+    "atom?",
+    "boolean?",
+    "integer?",
+    "list?",
+    "number?",
+    "null?",
+    "pair?",
+    "procedure?",
+    "string?",
+    "symbol?",
+    "car",
+    "cdr",
+    "cons",
+    "length",
+    "list",
+    "append",
+    "map",
+    "filter",
+    "reduce",
+    "apply",
+    "eval",
+    "=",
+    "<",
+    ">",
+    "<=",
+    ">=",
+    "even?",
+    "odd?",
+    "zero?",
+    "eq?",
+    "equal?",
+    "not",
+    "graphics-open",
+    "graphics-close",
+    "graphics-clear",
+    "graphics-color",
+    "graphics-line",
+    "graphics-rect",
+    "graphics-circle",
+    "graphics-text",
+    "graphics-refresh",
+    "graphics-poll-event",
+    "graphics-wait-event",
     "graphics-sleep",
 };
 
@@ -80,12 +159,15 @@ const std::set<char> TOKEN_END_CHARS{'(', ')', '\'', '`', ',', '"'};
 
 bool isIdentStart(char c) {
     return !std::isspace(static_cast<unsigned char>(c)) &&
-           !TOKEN_END_CHARS.contains(c) &&
-           c != ';' && c != '#' && c != '.';
+           !TOKEN_END_CHARS.contains(c) && c != ';' && c != '#' && c != '.';
 }
 
-bool isIdentChar(char c) { return isIdentStart(c); }
-bool isKeyword(const std::string& s) { return LISP_KEYWORDS.contains(s); }
+bool isIdentChar(char c) {
+    return isIdentStart(c);
+}
+bool isKeyword(const std::string& s) {
+    return LISP_KEYWORDS.contains(s);
+}
 }  // namespace
 
 // ============================================================================
@@ -115,8 +197,8 @@ void LineEditor::enableRawMode() {
     if (hOut != INVALID_HANDLE_VALUE) {
         DWORD dwMode = 0;
         if (GetConsoleMode(hOut, &dwMode)) {
-            savedOutputMode_ = reinterpret_cast<void*>(
-                static_cast<uintptr_t>(dwMode));
+            savedOutputMode_ =
+                reinterpret_cast<void*>(static_cast<uintptr_t>(dwMode));
             dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
             SetConsoleMode(hOut, dwMode);
         }
@@ -126,8 +208,8 @@ void LineEditor::enableRawMode() {
     if (hIn != INVALID_HANDLE_VALUE) {
         DWORD dwMode = 0;
         if (GetConsoleMode(hIn, &dwMode)) {
-            savedInputMode_ = reinterpret_cast<void*>(
-                static_cast<uintptr_t>(dwMode));
+            savedInputMode_ =
+                reinterpret_cast<void*>(static_cast<uintptr_t>(dwMode));
             DWORD newMode = dwMode;
             newMode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
             newMode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
@@ -204,8 +286,7 @@ LineEditor::KeyPress LineEditor::readKey() {
                 case 'H': return {Key::Home, '\0'};
                 case 'F': return {Key::End, '\0'};
                 case '3':
-                    if (_kbhit() && _getch() == '~')
-                        return {Key::Delete, '\0'};
+                    if (_kbhit() && _getch() == '~') return {Key::Delete, '\0'};
                     break;
                 default: break;
             }
@@ -213,8 +294,7 @@ LineEditor::KeyPress LineEditor::readKey() {
         return {Key::Unknown, '\0'};
     }
 
-    if (ch >= 32 && ch < 127)
-        return {Key::Char, static_cast<char>(ch)};
+    if (ch >= 32 && ch < 127) return {Key::Char, static_cast<char>(ch)};
 
     return {Key::Unknown, '\0'};
 }
@@ -335,9 +415,8 @@ std::string LineEditor::highlight(const std::string& text) {
 // 屏幕渲染
 // ============================================================================
 
-void LineEditor::render(const std::string& prompt,
-                         const std::string& text,
-                         int cursorPos) {
+void LineEditor::render(const std::string& prompt, const std::string& text,
+                        int cursorPos) {
     std::cout << "\r\033[0K";
 
     if (config_.syntaxHighlight) {
@@ -375,8 +454,14 @@ int LineEditor::countOpenParens(const std::string& text) {
             if (c == '\\') i++;
             continue;
         }
-        if (c == ';') { inComment = true; continue; }
-        if (c == '"') { inString = true; continue; }
+        if (c == ';') {
+            inComment = true;
+            continue;
+        }
+        if (c == '"') {
+            inString = true;
+            continue;
+        }
         if (c == '(') count++;
         if (c == ')') count--;
     }
@@ -388,7 +473,7 @@ int LineEditor::countOpenParens(const std::string& text) {
 // ============================================================================
 
 std::optional<std::string> LineEditor::readLine(const std::string& prompt,
-                                                  int indentHint) {
+                                                int indentHint) {
     // 非交互模式（管道/重定向）：回退到标准逐行读取
     if (!useRawMode_) {
         std::cout << prompt;
@@ -528,9 +613,7 @@ std::optional<std::string> LineEditor::readLine(const std::string& prompt,
                 break;
             }
 
-            default:
-                break;
+            default: break;
         }
     }
 }
-

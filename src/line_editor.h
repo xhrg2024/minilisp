@@ -25,7 +25,7 @@ public:
     // 读取一行输入。indentHint 预填充空格（用于续行模式下的自动缩进）。
     // 返回 nullopt 表示 EOF。
     std::optional<std::string> readLine(const std::string& prompt,
-                                         int indentHint = 0);
+                                        int indentHint = 0);
 
     // 计算文本中的未闭合左括号数（用于自动缩进）
     static int countOpenParens(const std::string& text);
@@ -62,8 +62,7 @@ private:
     KeyPress readKey();
 
     // 渲染当前行（含语法高亮和光标定位）
-    void render(const std::string& prompt,
-                const std::string& text,
+    void render(const std::string& prompt, const std::string& text,
                 int cursorPos);
 
     // 语法高亮：返回带 ANSI 颜色码的字符串

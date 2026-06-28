@@ -10,7 +10,6 @@
 class Value;
 class EvalEnv;
 
-
 using ValuePtr = std::shared_ptr<Value>;
 using BuiltinFuncType = ValuePtr(const std::vector<ValuePtr>&, EvalEnv&);
 

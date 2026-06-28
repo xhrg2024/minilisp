@@ -15,7 +15,12 @@ private:
     std::unordered_map<std::string, ValuePtr> symbols;
     std::shared_ptr<EvalEnv> parent;
 
-    std::vector<ValuePtr> evalList(ValuePtr expr);
+    std::vector<ValuePtr> evalArguments(
+        const std::vector<ValuePtr>& expressions);
+    ValuePtr evalSequence(const std::vector<ValuePtr>& expressions);
+    ValuePtr evalCombination(const std::vector<ValuePtr>& values);
+    ValuePtr applyLambda(LambdaValue& lambda,
+                         const std::vector<ValuePtr>& args);
 
     EvalEnv();
 

@@ -46,7 +46,8 @@ private:
     bool value;
 
 public:
-    BooleanLiteralToken(bool value) : Token(TokenType::BOOLEAN_LITERAL), value{value} {}
+    BooleanLiteralToken(bool value)
+        : Token(TokenType::BOOLEAN_LITERAL), value{value} {}
 
     static std::unique_ptr<BooleanLiteralToken> fromChar(char c);
 
@@ -61,7 +62,8 @@ private:
     double value;
 
 public:
-    NumericLiteralToken(double value) : Token(TokenType::NUMERIC_LITERAL), value{value} {}
+    NumericLiteralToken(double value)
+        : Token(TokenType::NUMERIC_LITERAL), value{value} {}
 
     double getValue() const {
         return value;
@@ -74,7 +76,8 @@ private:
     std::string value;
 
 public:
-    StringLiteralToken(const std::string& value) : Token(TokenType::STRING_LITERAL), value{value} {}
+    StringLiteralToken(const std::string& value)
+        : Token(TokenType::STRING_LITERAL), value{value} {}
 
     const std::string& getValue() const {
         return value;
@@ -87,7 +90,8 @@ private:
     std::string name;
 
 public:
-    IdentifierToken(const std::string& name) : Token(TokenType::IDENTIFIER), name{name} {}
+    IdentifierToken(const std::string& name)
+        : Token(TokenType::IDENTIFIER), name{name} {}
 
     const std::string& getName() const {
         return name;

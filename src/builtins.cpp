@@ -8,53 +8,32 @@
 #include "./error.h"
 #include "./eval_env.h"
 #include "./graphics.h"
+#include "./lisp_utils.h"
 
 namespace {
 
-void requireArgsSize(const std::vector<ValuePtr>& args, std::size_t expected, const char* name) {
-    if (args.size() != expected) {
-        throw LispError(std::string(name) + " expects " + std::to_string(expected) + " argument(s).");
-    }
-}
+using LispUtils::equalValues;
+using LispUtils::expectNumber;
+using LispUtils::expectString;
+using LispUtils::isProperList;
+using LispUtils::makeBool;
+using LispUtils::makeList;
+using LispUtils::makeNil;
+using LispUtils::requireArgsSize;
+using LispUtils::requireAtLeast;
 
-void requireAtLeast(const std::vector<ValuePtr>& args, std::size_t expected, const char* name) {
-    if (args.size() < expected) {
-        throw LispError(std::string(name) + " expects at least " + std::to_string(expected) + " argument(s).");
+ValuePtr compareNumbers(const std::vector<ValuePtr>& args, const char* name,
+                        bool (*compare)(double, double)) {
+    requireAtLeast(args, 2, name);
+    for (std::size_t i = 1; i < args.size(); ++i) {
+        if (!args[i - 1]->isNumber() || !args[i]->isNumber()) {
+            return makeBool(false);
+        }
+        if (!compare(*args[i - 1]->asNumber(), *args[i]->asNumber())) {
+            return makeBool(false);
+        }
     }
-}
-
-double expectNumber(const ValuePtr& value, const char* message) {
-    if (!value->isNumber()) {
-        throw LispError(message);
-    }
-    return *value->asNumber();
-}
-
-bool isProperList(const ValuePtr& value) {
-    if (value->isNil()) {
-        return true;
-    }
-    auto pair = std::dynamic_pointer_cast<PairValue>(value);
-    if (pair == nullptr) {
-        return false;
-    }
-    return isProperList(pair->getRight());
-}
-
-ValuePtr makeBool(bool value) {
-    return std::make_shared<BooleanValue>(value);
-}
-
-ValuePtr makeNil() {
-    return std::make_shared<NilValue>();
-}
-
-ValuePtr makeListFromValues(const std::vector<ValuePtr>& values) {
-    ValuePtr result = makeNil();
-    for (auto iter = values.rbegin(); iter != values.rend(); ++iter) {
-        result = std::make_shared<PairValue>(*iter, result);
-    }
-    return result;
+    return makeBool(true);
 }
 
 }  // namespace
@@ -69,7 +48,8 @@ ValuePtr add(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
 ValuePtr sub(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireAtLeast(args, 1, "-");
-    double result = expectNumber(args.front(), "Cannot subtract a non-numeric value.");
+    double result =
+        expectNumber(args.front(), "Cannot subtract a non-numeric value.");
     if (args.size() == 1) {
         return std::make_shared<NumericValue>(-result);
     }
@@ -89,7 +69,8 @@ ValuePtr mul(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
 ValuePtr div(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireAtLeast(args, 1, "/");
-    double result = expectNumber(args.front(), "Cannot divide a non-numeric value.");
+    double result =
+        expectNumber(args.front(), "Cannot divide a non-numeric value.");
     if (args.size() == 1) {
         return std::make_shared<NumericValue>(1.0 / result);
     }
@@ -101,14 +82,15 @@ ValuePtr div(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
 ValuePtr absValue(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 1, "abs");
-    return std::make_shared<NumericValue>(std::abs(expectNumber(args.front(), "Cannot take abs of a non-numeric value.")));
+    return std::make_shared<NumericValue>(std::abs(
+        expectNumber(args.front(), "Cannot take abs of a non-numeric value.")));
 }
 
 ValuePtr expt(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 2, "expt");
-    return std::make_shared<NumericValue>(
-        std::pow(expectNumber(args[0], "Cannot exponentiate a non-numeric value."),
-                 expectNumber(args[1], "Cannot exponentiate a non-numeric value.")));
+    return std::make_shared<NumericValue>(std::pow(
+        expectNumber(args[0], "Cannot exponentiate a non-numeric value."),
+        expectNumber(args[1], "Cannot exponentiate a non-numeric value.")));
 }
 
 ValuePtr quotient(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -133,41 +115,48 @@ ValuePtr modulo(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
 ValuePtr sqrtProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 1, "sqrt");
-    return std::make_shared<NumericValue>(std::sqrt(expectNumber(args[0], "sqrt expects a number.")));
+    return std::make_shared<NumericValue>(
+        std::sqrt(expectNumber(args[0], "sqrt expects a number.")));
 }
 
 ValuePtr sinProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 1, "sin");
-    return std::make_shared<NumericValue>(std::sin(expectNumber(args[0], "sin expects a number.")));
+    return std::make_shared<NumericValue>(
+        std::sin(expectNumber(args[0], "sin expects a number.")));
 }
 
 ValuePtr cosProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 1, "cos");
-    return std::make_shared<NumericValue>(std::cos(expectNumber(args[0], "cos expects a number.")));
+    return std::make_shared<NumericValue>(
+        std::cos(expectNumber(args[0], "cos expects a number.")));
 }
 
 ValuePtr tanProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 1, "tan");
-    return std::make_shared<NumericValue>(std::tan(expectNumber(args[0], "tan expects a number.")));
+    return std::make_shared<NumericValue>(
+        std::tan(expectNumber(args[0], "tan expects a number.")));
 }
 
 ValuePtr asinProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 1, "asin");
-    return std::make_shared<NumericValue>(std::asin(expectNumber(args[0], "asin expects a number.")));
+    return std::make_shared<NumericValue>(
+        std::asin(expectNumber(args[0], "asin expects a number.")));
 }
 
 ValuePtr acosProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 1, "acos");
-    return std::make_shared<NumericValue>(std::acos(expectNumber(args[0], "acos expects a number.")));
+    return std::make_shared<NumericValue>(
+        std::acos(expectNumber(args[0], "acos expects a number.")));
 }
 
 ValuePtr atanProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireAtLeast(args, 1, "atan");
     if (args.size() == 2)
-        return std::make_shared<NumericValue>(std::atan2(
-            expectNumber(args[0], "atan expects numbers."),
-            expectNumber(args[1], "atan expects numbers.")));
-    return std::make_shared<NumericValue>(std::atan(expectNumber(args[0], "atan expects a number.")));
+        return std::make_shared<NumericValue>(
+            std::atan2(expectNumber(args[0], "atan expects numbers."),
+                       expectNumber(args[1], "atan expects numbers.")));
+    return std::make_shared<NumericValue>(
+        std::atan(expectNumber(args[0], "atan expects a number.")));
 }
 
 ValuePtr logProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -176,34 +165,40 @@ ValuePtr logProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
         return std::make_shared<NumericValue>(
             std::log(expectNumber(args[1], "log expects numbers.")) /
             std::log(expectNumber(args[0], "log expects numbers.")));
-    return std::make_shared<NumericValue>(std::log(expectNumber(args[0], "log expects a number.")));
+    return std::make_shared<NumericValue>(
+        std::log(expectNumber(args[0], "log expects a number.")));
 }
 
 ValuePtr expProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 1, "exp");
-    return std::make_shared<NumericValue>(std::exp(expectNumber(args[0], "exp expects a number.")));
+    return std::make_shared<NumericValue>(
+        std::exp(expectNumber(args[0], "exp expects a number.")));
 }
 
 ValuePtr floorProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 1, "floor");
-    return std::make_shared<NumericValue>(std::floor(expectNumber(args[0], "floor expects a number.")));
+    return std::make_shared<NumericValue>(
+        std::floor(expectNumber(args[0], "floor expects a number.")));
 }
 
 ValuePtr ceilProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 1, "ceil");
-    return std::make_shared<NumericValue>(std::ceil(expectNumber(args[0], "ceil expects a number.")));
+    return std::make_shared<NumericValue>(
+        std::ceil(expectNumber(args[0], "ceil expects a number.")));
 }
 
 ValuePtr roundProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 1, "round");
-    return std::make_shared<NumericValue>(std::round(expectNumber(args[0], "round expects a number.")));
+    return std::make_shared<NumericValue>(
+        std::round(expectNumber(args[0], "round expects a number.")));
 }
 
 ValuePtr maxProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireAtLeast(args, 1, "max");
     double result = expectNumber(args[0], "max expects numbers.");
     for (std::size_t i = 1; i < args.size(); ++i)
-        result = std::max(result, expectNumber(args[i], "max expects numbers."));
+        result =
+            std::max(result, expectNumber(args[i], "max expects numbers."));
     return std::make_shared<NumericValue>(result);
 }
 
@@ -211,7 +206,8 @@ ValuePtr minProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireAtLeast(args, 1, "min");
     double result = expectNumber(args[0], "min expects numbers.");
     for (std::size_t i = 1; i < args.size(); ++i)
-        result = std::min(result, expectNumber(args[i], "min expects numbers."));
+        result =
+            std::min(result, expectNumber(args[i], "min expects numbers."));
     return std::make_shared<NumericValue>(result);
 }
 
@@ -229,16 +225,6 @@ ValuePtr lcmProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     return std::make_shared<NumericValue>(static_cast<double>(std::lcm(a, b)));
 }
 
-namespace {
-
-const std::string& expectString(const ValuePtr& value, const char* message) {
-    auto str = std::dynamic_pointer_cast<const StringValue>(value);
-    if (!str) throw LispError(message);
-    return str->getValue();
-}
-
-}  // namespace
-
 ValuePtr stringAppendProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     std::string result;
     for (const auto& arg : args)
@@ -248,14 +234,15 @@ ValuePtr stringAppendProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
 ValuePtr stringLengthProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 1, "string-length");
-    return std::make_shared<NumericValue>(
-        static_cast<double>(expectString(args[0], "string-length expects a string.").size()));
+    return std::make_shared<NumericValue>(static_cast<double>(
+        expectString(args[0], "string-length expects a string.").size()));
 }
 
 ValuePtr stringRefProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 2, "string-ref");
     const auto& s = expectString(args[0], "string-ref expects a string.");
-    auto idx = static_cast<std::size_t>(expectNumber(args[1], "string-ref expects an index."));
+    auto idx = static_cast<std::size_t>(
+        expectNumber(args[1], "string-ref expects an index."));
     if (idx >= s.size()) throw LispError("string-ref: index out of range.");
     return std::make_shared<StringValue>(std::string(1, s[idx]));
 }
@@ -263,8 +250,10 @@ ValuePtr stringRefProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
 ValuePtr substringProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 3, "substring");
     const auto& s = expectString(args[0], "substring expects a string.");
-    auto start = static_cast<std::size_t>(expectNumber(args[1], "substring expects a start index."));
-    auto end = static_cast<std::size_t>(expectNumber(args[2], "substring expects an end index."));
+    auto start = static_cast<std::size_t>(
+        expectNumber(args[1], "substring expects a start index."));
+    auto end = static_cast<std::size_t>(
+        expectNumber(args[2], "substring expects an end index."));
     if (start > s.size() || end > s.size() || start > end)
         throw LispError("substring: index out of range.");
     return std::make_shared<StringValue>(s.substr(start, end - start));
@@ -329,8 +318,6 @@ ValuePtr stringDowncaseProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     return std::make_shared<StringValue>(result);
 }
 
-
-
 ValuePtr print(const std::vector<ValuePtr>& args, EvalEnv& env) {
     for (std::size_t i = 0; i < args.size(); ++i) {
         if (i != 0) {
@@ -366,8 +353,6 @@ ValuePtr errorProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     }
     throw LispError(args.front()->toString());
 }
-
-
 
 ValuePtr exitProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     int code = 0;
@@ -473,7 +458,7 @@ ValuePtr length(const std::vector<ValuePtr>& args, EvalEnv& env) {
 }
 
 ValuePtr list(const std::vector<ValuePtr>& args, EvalEnv& env) {
-    return makeListFromValues(args);
+    return makeList(args);
 }
 
 ValuePtr append(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -483,7 +468,7 @@ ValuePtr append(const std::vector<ValuePtr>& args, EvalEnv& env) {
         auto vec = listArg->toVector();
         result.insert(result.end(), vec.begin(), vec.end());
     }
-    return makeListFromValues(result);
+    return makeList(result);
 }
 
 ValuePtr map(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -494,7 +479,7 @@ ValuePtr map(const std::vector<ValuePtr>& args, EvalEnv& env) {
     for (const auto& elem : vec) {
         results.push_back(env.apply(proc, {elem}));
     }
-    return makeListFromValues(results);
+    return makeList(results);
 }
 
 ValuePtr filter(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -509,7 +494,7 @@ ValuePtr filter(const std::vector<ValuePtr>& args, EvalEnv& env) {
             results.push_back(elem);
         }
     }
-    return makeListFromValues(results);
+    return makeList(results);
 }
 
 ValuePtr reduce(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -538,60 +523,29 @@ ValuePtr evalProc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     return env.eval(args[0]);
 }
 
-
 ValuePtr equalNum(const std::vector<ValuePtr>& args, EvalEnv& env) {
-    requireAtLeast(args, 2, "=");
-    for (std::size_t i = 1; i < args.size(); ++i) {
-        if (!args[i - 1]->isNumber() || !args[i]->isNumber() ||
-            *args[i - 1]->asNumber() != *args[i]->asNumber()) {
-            return makeBool(false);
-        }
-    }
-    return makeBool(true);
+    return compareNumbers(args, "=",
+                          [](double lhs, double rhs) { return lhs == rhs; });
 }
 
 ValuePtr less(const std::vector<ValuePtr>& args, EvalEnv& env) {
-    requireAtLeast(args, 2, "<");
-    for (std::size_t i = 1; i < args.size(); ++i) {
-        if (!args[i - 1]->isNumber() || !args[i]->isNumber() ||
-            *args[i - 1]->asNumber() >= *args[i]->asNumber()) {
-            return makeBool(false);
-        }
-    }
-    return makeBool(true);
+    return compareNumbers(args, "<",
+                          [](double lhs, double rhs) { return lhs < rhs; });
 }
 
 ValuePtr greater(const std::vector<ValuePtr>& args, EvalEnv& env) {
-    requireAtLeast(args, 2, ">");
-    for (std::size_t i = 1; i < args.size(); ++i) {
-        if (!args[i - 1]->isNumber() || !args[i]->isNumber() ||
-            *args[i - 1]->asNumber() <= *args[i]->asNumber()) {
-            return makeBool(false);
-        }
-    }
-    return makeBool(true);
+    return compareNumbers(args, ">",
+                          [](double lhs, double rhs) { return lhs > rhs; });
 }
 
 ValuePtr lessEqual(const std::vector<ValuePtr>& args, EvalEnv& env) {
-    requireAtLeast(args, 2, "<=");
-    for (std::size_t i = 1; i < args.size(); ++i) {
-        if (!args[i - 1]->isNumber() || !args[i]->isNumber() ||
-            *args[i - 1]->asNumber() > *args[i]->asNumber()) {
-            return makeBool(false);
-        }
-    }
-    return makeBool(true);
+    return compareNumbers(
+        args, "<=", [](double lhs, double rhs) { return lhs <= rhs; });
 }
 
 ValuePtr greaterEqual(const std::vector<ValuePtr>& args, EvalEnv& env) {
-    requireAtLeast(args, 2, ">=");
-    for (std::size_t i = 1; i < args.size(); ++i) {
-        if (!args[i - 1]->isNumber() || !args[i]->isNumber() ||
-            *args[i - 1]->asNumber() < *args[i]->asNumber()) {
-            return makeBool(false);
-        }
-    }
-    return makeBool(true);
+    return compareNumbers(
+        args, ">=", [](double lhs, double rhs) { return lhs >= rhs; });
 }
 
 ValuePtr evenp(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -612,45 +566,16 @@ ValuePtr oddp(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
 ValuePtr zerop(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 1, "zero?");
-    return makeBool(args.front()->isNumber() && *args.front()->asNumber() == 0.0);
+    return makeBool(args.front()->isNumber() &&
+                    *args.front()->asNumber() == 0.0);
 }
-
-namespace {
-
-bool equalValues(const ValuePtr& a, const ValuePtr& b) {
-    if (a->isNil() && b->isNil()) {
-        return true;
-    }
-    if (a->isBoolean() && b->isBoolean()) {
-        return dynamic_cast<const BooleanValue&>(*a).getValue() ==
-               dynamic_cast<const BooleanValue&>(*b).getValue();
-    }
-    if (a->isNumber() && b->isNumber()) {
-        return *a->asNumber() == *b->asNumber();
-    }
-    if (a->isString() && b->isString()) {
-        return dynamic_cast<const StringValue&>(*a).getValue() ==
-               dynamic_cast<const StringValue&>(*b).getValue();
-    }
-    if (a->asSymbol().has_value() && b->asSymbol().has_value()) {
-        return *a->asSymbol() == *b->asSymbol();
-    }
-    if (a->isPair() && b->isPair()) {
-        auto& pa = dynamic_cast<const PairValue&>(*a);
-        auto& pb = dynamic_cast<const PairValue&>(*b);
-        return equalValues(pa.getLeft(), pb.getLeft()) &&
-               equalValues(pa.getRight(), pb.getRight());
-    }
-    return false;
-}
-
-}  // namespace
 
 ValuePtr eqp(const std::vector<ValuePtr>& args, EvalEnv& env) {
     requireArgsSize(args, 2, "eq?");
     const auto& a = args[0];
     const auto& b = args[1];
-    if (a->isBoolean() || a->isNumber() || a->isNil() || a->asSymbol().has_value()) {
+    if (a->isBoolean() || a->isNumber() || a->isNil() ||
+        a->asSymbol().has_value()) {
         return makeBool(equalValues(a, b));
     }
     return makeBool(a.get() == b.get());
@@ -669,7 +594,6 @@ ValuePtr notp(const std::vector<ValuePtr>& args, EvalEnv& env) {
     }
     return makeBool(false);
 }
-
 
 const std::unordered_map<std::string, BuiltinFuncType*> BUILTIN_FUNCTIONS{
     {"graphics-open", &graphicsOpen},

@@ -5,9 +5,9 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cmath>
 #include <condition_variable>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <string>
 #include <thread>
@@ -15,13 +15,49 @@
 #include <vector>
 
 #include "./error.h"
+#include "./lisp_utils.h"
 #include "./value.h"
 
 namespace {
 
+using LispUtils::expectInt;
+using LispUtils::expectString;
+using LispUtils::isFalseValue;
+using LispUtils::makeBool;
+using LispUtils::makeList;
+using LispUtils::makeNil;
+using LispUtils::makeNumber;
+using LispUtils::makeSymbol;
+using LispUtils::requireArgsSize;
+
+struct Point {
+    int x = 0;
+    int y = 0;
+};
+
+struct Size {
+    int width = 0;
+    int height = 0;
+};
+
 struct GraphicsEvent {
     std::string name;
     std::vector<ValuePtr> payload;
+};
+
+struct WindowState {
+    HWND hwnd = nullptr;
+    bool ready = false;
+    bool open = false;
+};
+
+struct BackBuffer {
+    HDC backDc = nullptr;
+    HBITMAP backBitmap = nullptr;
+    HBITMAP oldBitmap = nullptr;
+    int width = 0;
+    int height = 0;
+    COLORREF drawColor = RGB(0, 0, 0);
 };
 
 struct GraphicsState {
@@ -30,94 +66,66 @@ struct GraphicsState {
     std::condition_variable eventChanged;
     std::queue<GraphicsEvent> events;
     std::thread uiThread;
-    HWND hwnd = nullptr;
-    HDC backDc = nullptr;
-    HBITMAP backBitmap = nullptr;
-    HBITMAP oldBitmap = nullptr;
-    COLORREF drawColor = RGB(0, 0, 0);
-    int width = 0;
-    int height = 0;
-    bool ready = false;
-    bool open = false;
+    WindowState window;
+    BackBuffer buffer;
 };
 
 GraphicsState gGraphics;
 
-ValuePtr makeNil() {
-    return std::make_shared<NilValue>();
-}
-
-ValuePtr makeBool(bool value) {
-    return std::make_shared<BooleanValue>(value);
-}
-
-ValuePtr makeSymbol(const std::string& name) {
-    return std::make_shared<SymbolValue>(name);
-}
-
-ValuePtr makeNumber(double value) {
-    return std::make_shared<NumericValue>(value);
-}
-
-ValuePtr makeList(const std::vector<ValuePtr>& values) {
-    ValuePtr result = makeNil();
-    for (auto iter = values.rbegin(); iter != values.rend(); ++iter) {
-        result = std::make_shared<PairValue>(*iter, result);
-    }
-    return result;
-}
-
-double expectNumber(const ValuePtr& value, const char* message) {
-    auto number = value->asNumber();
-    if (!number) {
-        throw LispError(message);
-    }
-    return *number;
-}
-
-int expectInt(const ValuePtr& value, const char* message) {
-    return static_cast<int>(std::lround(expectNumber(value, message)));
-}
-
-std::string expectString(const ValuePtr& value, const char* message) {
-    auto string = std::dynamic_pointer_cast<StringValue>(value);
-    if (string == nullptr) {
-        throw LispError(message);
-    }
-    return string->getValue();
-}
-
-bool isFalseValue(const ValuePtr& value) {
-    auto boolean = std::dynamic_pointer_cast<BooleanValue>(value);
-    return boolean != nullptr && !boolean->getValue();
-}
-
-void requireArgsSize(const std::vector<ValuePtr>& args, std::size_t expected, const char* name) {
-    if (args.size() != expected) {
-        throw LispError(std::string(name) + " expects " + std::to_string(expected) + " argument(s).");
-    }
-}
-
 void requireWindowOpen() {
     std::scoped_lock lock(gGraphics.mutex);
-    if (!gGraphics.open || gGraphics.hwnd == nullptr || gGraphics.backDc == nullptr) {
+    if (!gGraphics.window.open || gGraphics.window.hwnd == nullptr ||
+        gGraphics.buffer.backDc == nullptr) {
         throw LispError("graphics window is not open.");
     }
 }
 
-COLORREF expectColor(const std::vector<ValuePtr>& args, std::size_t start, const char* name) {
+COLORREF expectColor(const std::vector<ValuePtr>& args, std::size_t start,
+                     const char* name) {
     auto r = std::clamp(expectInt(args[start], name), 0, 255);
     auto g = std::clamp(expectInt(args[start + 1], name), 0, 255);
     auto b = std::clamp(expectInt(args[start + 2], name), 0, 255);
     return RGB(r, g, b);
 }
 
+Point expectPoint(const std::vector<ValuePtr>& args, std::size_t start,
+                  const char* name) {
+    return {
+        expectInt(args[start], name),
+        expectInt(args[start + 1], name),
+    };
+}
+
+Size expectSize(const std::vector<ValuePtr>& args, std::size_t start,
+                const char* name) {
+    return {
+        expectInt(args[start], name),
+        expectInt(args[start + 1], name),
+    };
+}
+
 void pushEvent(std::string name, std::vector<ValuePtr> payload = {}) {
     {
         std::scoped_lock lock(gGraphics.mutex);
-        gGraphics.events.push(GraphicsEvent{std::move(name), std::move(payload)});
+        gGraphics.events.push(
+            GraphicsEvent{std::move(name), std::move(payload)});
     }
     gGraphics.eventChanged.notify_all();
+}
+
+std::optional<GraphicsEvent> popEventLocked() {
+    if (gGraphics.events.empty()) {
+        return std::nullopt;
+    }
+    auto event = std::move(gGraphics.events.front());
+    gGraphics.events.pop();
+    return event;
+}
+
+ValuePtr eventToValue(GraphicsEvent&& event) {
+    std::vector<ValuePtr> values{makeSymbol(event.name)};
+    values.insert(values.end(), event.payload.begin(), event.payload.end());
+    return makeList(values);
 }
 
 std::string mouseButtonName(UINT message) {
@@ -130,16 +138,18 @@ std::string mouseButtonName(UINT message) {
     return "left";
 }
 
-LRESULT CALLBACK graphicsWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK graphicsWndProc(HWND hwnd, UINT message, WPARAM wParam,
+                                 LPARAM lParam) {
     switch (message) {
         case WM_PAINT: {
             PAINTSTRUCT paint;
             HDC dc = BeginPaint(hwnd, &paint);
             {
                 std::scoped_lock lock(gGraphics.mutex);
-                if (gGraphics.backDc != nullptr) {
-                    BitBlt(dc, 0, 0, gGraphics.width, gGraphics.height,
-                           gGraphics.backDc, 0, 0, SRCCOPY);
+                if (gGraphics.buffer.backDc != nullptr) {
+                    BitBlt(dc, 0, 0, gGraphics.buffer.width,
+                           gGraphics.buffer.height, gGraphics.buffer.backDc, 0,
+                           0, SRCCOPY);
                 }
             }
             EndPaint(hwnd, &paint);
@@ -150,28 +160,28 @@ LRESULT CALLBACK graphicsWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         case WM_MBUTTONDOWN: {
             SetFocus(hwnd);
             pushEvent("mouse-down", {
-                makeNumber(GET_X_LPARAM(lParam)),
-                makeNumber(GET_Y_LPARAM(lParam)),
-                makeSymbol(mouseButtonName(message)),
-            });
+                                        makeNumber(GET_X_LPARAM(lParam)),
+                                        makeNumber(GET_Y_LPARAM(lParam)),
+                                        makeSymbol(mouseButtonName(message)),
+                                    });
             return 0;
         }
         case WM_LBUTTONUP:
         case WM_RBUTTONUP:
         case WM_MBUTTONUP: {
             pushEvent("mouse-up", {
-                makeNumber(GET_X_LPARAM(lParam)),
-                makeNumber(GET_Y_LPARAM(lParam)),
-                makeSymbol(mouseButtonName(message)),
-            });
+                                      makeNumber(GET_X_LPARAM(lParam)),
+                                      makeNumber(GET_Y_LPARAM(lParam)),
+                                      makeSymbol(mouseButtonName(message)),
+                                  });
             return 0;
         }
         case WM_MOUSEMOVE: {
             if ((wParam & (MK_LBUTTON | MK_RBUTTON | MK_MBUTTON)) != 0) {
                 pushEvent("mouse-move", {
-                    makeNumber(GET_X_LPARAM(lParam)),
-                    makeNumber(GET_Y_LPARAM(lParam)),
-                });
+                                            makeNumber(GET_X_LPARAM(lParam)),
+                                            makeNumber(GET_Y_LPARAM(lParam)),
+                                        });
             }
             return 0;
         }
@@ -185,25 +195,24 @@ LRESULT CALLBACK graphicsWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             return 0;
         case WM_DESTROY: {
             std::scoped_lock lock(gGraphics.mutex);
-            gGraphics.open = false;
-            gGraphics.hwnd = nullptr;
+            gGraphics.window.open = false;
+            gGraphics.window.hwnd = nullptr;
             gGraphics.eventChanged.notify_all();
             PostQuitMessage(0);
             return 0;
         }
-        default:
-            return DefWindowProc(hwnd, message, wParam, lParam);
+        default: return DefWindowProc(hwnd, message, wParam, lParam);
     }
 }
 
 void cleanupBackBuffer() {
-    if (gGraphics.backDc != nullptr) {
-        SelectObject(gGraphics.backDc, gGraphics.oldBitmap);
-        DeleteObject(gGraphics.backBitmap);
-        DeleteDC(gGraphics.backDc);
-        gGraphics.backDc = nullptr;
-        gGraphics.backBitmap = nullptr;
-        gGraphics.oldBitmap = nullptr;
+    if (gGraphics.buffer.backDc != nullptr) {
+        SelectObject(gGraphics.buffer.backDc, gGraphics.buffer.oldBitmap);
+        DeleteObject(gGraphics.buffer.backBitmap);
+        DeleteDC(gGraphics.buffer.backDc);
+        gGraphics.buffer.backDc = nullptr;
+        gGraphics.buffer.backBitmap = nullptr;
+        gGraphics.buffer.oldBitmap = nullptr;
     }
 }
 
@@ -222,14 +231,14 @@ void uiThreadMain(int width, int height, std::string title) {
     RECT rect{0, 0, width, height};
     AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
 
-    HWND hwnd = CreateWindowExA(0, className, title.c_str(), WS_OVERLAPPEDWINDOW,
-                                CW_USEDEFAULT, CW_USEDEFAULT,
-                                rect.right - rect.left, rect.bottom - rect.top,
-                                nullptr, nullptr, instance, nullptr);
+    HWND hwnd = CreateWindowExA(
+        0, className, title.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,
+        CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, nullptr,
+        nullptr, instance, nullptr);
     if (hwnd == nullptr) {
         std::scoped_lock lock(gGraphics.mutex);
-        gGraphics.ready = true;
-        gGraphics.open = false;
+        gGraphics.window.ready = true;
+        gGraphics.window.open = false;
         gGraphics.readyChanged.notify_all();
         return;
     }
@@ -241,19 +250,20 @@ void uiThreadMain(int width, int height, std::string title) {
     ReleaseDC(hwnd, windowDc);
 
     RECT clearRect{0, 0, width, height};
-    FillRect(backDc, &clearRect, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
+    FillRect(backDc, &clearRect,
+             static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
     SetBkMode(backDc, TRANSPARENT);
 
     {
         std::scoped_lock lock(gGraphics.mutex);
-        gGraphics.hwnd = hwnd;
-        gGraphics.backDc = backDc;
-        gGraphics.backBitmap = bitmap;
-        gGraphics.oldBitmap = oldBitmap;
-        gGraphics.width = width;
-        gGraphics.height = height;
-        gGraphics.ready = true;
-        gGraphics.open = true;
+        gGraphics.window.hwnd = hwnd;
+        gGraphics.buffer.backDc = backDc;
+        gGraphics.buffer.backBitmap = bitmap;
+        gGraphics.buffer.oldBitmap = oldBitmap;
+        gGraphics.buffer.width = width;
+        gGraphics.buffer.height = height;
+        gGraphics.window.ready = true;
+        gGraphics.window.open = true;
     }
     gGraphics.readyChanged.notify_all();
 
@@ -268,15 +278,15 @@ void uiThreadMain(int width, int height, std::string title) {
 
     std::scoped_lock lock(gGraphics.mutex);
     cleanupBackBuffer();
-    gGraphics.open = false;
-    gGraphics.hwnd = nullptr;
+    gGraphics.window.open = false;
+    gGraphics.window.hwnd = nullptr;
 }
 
 void invalidateWindow() {
     HWND hwnd = nullptr;
     {
         std::scoped_lock lock(gGraphics.mutex);
-        hwnd = gGraphics.hwnd;
+        hwnd = gGraphics.window.hwnd;
     }
     if (hwnd != nullptr) {
         InvalidateRect(hwnd, nullptr, FALSE);
@@ -287,7 +297,7 @@ void closeWindow() {
     HWND hwnd = nullptr;
     {
         std::scoped_lock lock(gGraphics.mutex);
-        hwnd = gGraphics.hwnd;
+        hwnd = gGraphics.window.hwnd;
     }
     if (hwnd != nullptr) {
         PostMessage(hwnd, WM_CLOSE, 0, 0);
@@ -312,17 +322,19 @@ ValuePtr graphicsOpen(const std::vector<ValuePtr>& args, EvalEnv&) {
 
     {
         std::scoped_lock lock(gGraphics.mutex);
-        gGraphics.ready = false;
+        gGraphics.window.ready = false;
         while (!gGraphics.events.empty()) {
             gGraphics.events.pop();
         }
     }
 
-    gGraphics.uiThread = std::thread(uiThreadMain, width, height, std::move(title));
+    gGraphics.uiThread =
+        std::thread(uiThreadMain, width, height, std::move(title));
     {
         std::unique_lock lock(gGraphics.mutex);
-        gGraphics.readyChanged.wait(lock, [] { return gGraphics.ready; });
-        if (!gGraphics.open) {
+        gGraphics.readyChanged.wait(lock,
+                                    [] { return gGraphics.window.ready; });
+        if (!gGraphics.window.open) {
             lock.unlock();
             if (gGraphics.uiThread.joinable()) {
                 gGraphics.uiThread.join();
@@ -341,12 +353,13 @@ ValuePtr graphicsClose(const std::vector<ValuePtr>&, EvalEnv&) {
 ValuePtr graphicsClear(const std::vector<ValuePtr>& args, EvalEnv&) {
     requireArgsSize(args, 3, "graphics-clear");
     requireWindowOpen();
-    auto color = expectColor(args, 0, "graphics-clear expects numeric RGB values.");
+    auto color =
+        expectColor(args, 0, "graphics-clear expects numeric RGB values.");
     {
         std::scoped_lock lock(gGraphics.mutex);
         HBRUSH brush = CreateSolidBrush(color);
-        RECT rect{0, 0, gGraphics.width, gGraphics.height};
-        FillRect(gGraphics.backDc, &rect, brush);
+        RECT rect{0, 0, gGraphics.buffer.width, gGraphics.buffer.height};
+        FillRect(gGraphics.buffer.backDc, &rect, brush);
         DeleteObject(brush);
     }
     return makeNil();
@@ -354,26 +367,27 @@ ValuePtr graphicsClear(const std::vector<ValuePtr>& args, EvalEnv&) {
 
 ValuePtr graphicsColor(const std::vector<ValuePtr>& args, EvalEnv&) {
     requireArgsSize(args, 3, "graphics-color");
-    auto color = expectColor(args, 0, "graphics-color expects numeric RGB values.");
+    auto color =
+        expectColor(args, 0, "graphics-color expects numeric RGB values.");
     std::scoped_lock lock(gGraphics.mutex);
-    gGraphics.drawColor = color;
+    gGraphics.buffer.drawColor = color;
     return makeNil();
 }
 
 ValuePtr graphicsLine(const std::vector<ValuePtr>& args, EvalEnv&) {
     requireArgsSize(args, 4, "graphics-line");
     requireWindowOpen();
-    auto x1 = expectInt(args[0], "graphics-line expects numeric coordinates.");
-    auto y1 = expectInt(args[1], "graphics-line expects numeric coordinates.");
-    auto x2 = expectInt(args[2], "graphics-line expects numeric coordinates.");
-    auto y2 = expectInt(args[3], "graphics-line expects numeric coordinates.");
+    auto from =
+        expectPoint(args, 0, "graphics-line expects numeric coordinates.");
+    auto to =
+        expectPoint(args, 2, "graphics-line expects numeric coordinates.");
     {
         std::scoped_lock lock(gGraphics.mutex);
-        HPEN pen = CreatePen(PS_SOLID, 1, gGraphics.drawColor);
-        auto oldPen = SelectObject(gGraphics.backDc, pen);
-        MoveToEx(gGraphics.backDc, x1, y1, nullptr);
-        LineTo(gGraphics.backDc, x2, y2);
-        SelectObject(gGraphics.backDc, oldPen);
+        HPEN pen = CreatePen(PS_SOLID, 1, gGraphics.buffer.drawColor);
+        auto oldPen = SelectObject(gGraphics.buffer.backDc, pen);
+        MoveToEx(gGraphics.buffer.backDc, from.x, from.y, nullptr);
+        LineTo(gGraphics.buffer.backDc, to.x, to.y);
+        SelectObject(gGraphics.buffer.backDc, oldPen);
         DeleteObject(pen);
     }
     return makeNil();
@@ -382,21 +396,21 @@ ValuePtr graphicsLine(const std::vector<ValuePtr>& args, EvalEnv&) {
 ValuePtr graphicsRect(const std::vector<ValuePtr>& args, EvalEnv&) {
     requireArgsSize(args, 5, "graphics-rect");
     requireWindowOpen();
-    auto x = expectInt(args[0], "graphics-rect expects numeric coordinates.");
-    auto y = expectInt(args[1], "graphics-rect expects numeric coordinates.");
-    auto width = expectInt(args[2], "graphics-rect expects numeric size.");
-    auto height = expectInt(args[3], "graphics-rect expects numeric size.");
+    auto origin =
+        expectPoint(args, 0, "graphics-rect expects numeric coordinates.");
+    auto size = expectSize(args, 2, "graphics-rect expects numeric size.");
     auto filled = !isFalseValue(args[4]);
     {
         std::scoped_lock lock(gGraphics.mutex);
-        HPEN pen = CreatePen(PS_SOLID, 1, gGraphics.drawColor);
-        HBRUSH brush = filled ? CreateSolidBrush(gGraphics.drawColor)
+        HPEN pen = CreatePen(PS_SOLID, 1, gGraphics.buffer.drawColor);
+        HBRUSH brush = filled ? CreateSolidBrush(gGraphics.buffer.drawColor)
                               : static_cast<HBRUSH>(GetStockObject(NULL_BRUSH));
-        auto oldPen = SelectObject(gGraphics.backDc, pen);
-        auto oldBrush = SelectObject(gGraphics.backDc, brush);
-        Rectangle(gGraphics.backDc, x, y, x + width, y + height);
-        SelectObject(gGraphics.backDc, oldBrush);
-        SelectObject(gGraphics.backDc, oldPen);
+        auto oldPen = SelectObject(gGraphics.buffer.backDc, pen);
+        auto oldBrush = SelectObject(gGraphics.buffer.backDc, brush);
+        Rectangle(gGraphics.buffer.backDc, origin.x, origin.y,
+                  origin.x + size.width, origin.y + size.height);
+        SelectObject(gGraphics.buffer.backDc, oldBrush);
+        SelectObject(gGraphics.buffer.backDc, oldPen);
         if (filled) {
             DeleteObject(brush);
         }
@@ -408,20 +422,21 @@ ValuePtr graphicsRect(const std::vector<ValuePtr>& args, EvalEnv&) {
 ValuePtr graphicsCircle(const std::vector<ValuePtr>& args, EvalEnv&) {
     requireArgsSize(args, 4, "graphics-circle");
     requireWindowOpen();
-    auto x = expectInt(args[0], "graphics-circle expects numeric coordinates.");
-    auto y = expectInt(args[1], "graphics-circle expects numeric coordinates.");
+    auto center =
+        expectPoint(args, 0, "graphics-circle expects numeric coordinates.");
     auto radius = expectInt(args[2], "graphics-circle expects numeric radius.");
     auto filled = !isFalseValue(args[3]);
     {
         std::scoped_lock lock(gGraphics.mutex);
-        HPEN pen = CreatePen(PS_SOLID, 1, gGraphics.drawColor);
-        HBRUSH brush = filled ? CreateSolidBrush(gGraphics.drawColor)
+        HPEN pen = CreatePen(PS_SOLID, 1, gGraphics.buffer.drawColor);
+        HBRUSH brush = filled ? CreateSolidBrush(gGraphics.buffer.drawColor)
                               : static_cast<HBRUSH>(GetStockObject(NULL_BRUSH));
-        auto oldPen = SelectObject(gGraphics.backDc, pen);
-        auto oldBrush = SelectObject(gGraphics.backDc, brush);
-        Ellipse(gGraphics.backDc, x - radius, y - radius, x + radius, y + radius);
-        SelectObject(gGraphics.backDc, oldBrush);
-        SelectObject(gGraphics.backDc, oldPen);
+        auto oldPen = SelectObject(gGraphics.buffer.backDc, pen);
+        auto oldBrush = SelectObject(gGraphics.buffer.backDc, brush);
+        Ellipse(gGraphics.buffer.backDc, center.x - radius, center.y - radius,
+                center.x + radius, center.y + radius);
+        SelectObject(gGraphics.buffer.backDc, oldBrush);
+        SelectObject(gGraphics.buffer.backDc, oldPen);
         if (filled) {
             DeleteObject(brush);
         }
@@ -433,14 +448,15 @@ ValuePtr graphicsCircle(const std::vector<ValuePtr>& args, EvalEnv&) {
 ValuePtr graphicsText(const std::vector<ValuePtr>& args, EvalEnv&) {
     requireArgsSize(args, 3, "graphics-text");
     requireWindowOpen();
-    auto x = expectInt(args[0], "graphics-text expects numeric coordinates.");
-    auto y = expectInt(args[1], "graphics-text expects numeric coordinates.");
+    auto origin =
+        expectPoint(args, 0, "graphics-text expects numeric coordinates.");
     auto text = expectString(args[2], "graphics-text expects a string.");
     {
         std::scoped_lock lock(gGraphics.mutex);
-        SetTextColor(gGraphics.backDc, gGraphics.drawColor);
-        SetBkMode(gGraphics.backDc, TRANSPARENT);
-        TextOutA(gGraphics.backDc, x, y, text.c_str(), static_cast<int>(text.size()));
+        SetTextColor(gGraphics.buffer.backDc, gGraphics.buffer.drawColor);
+        SetBkMode(gGraphics.buffer.backDc, TRANSPARENT);
+        TextOutA(gGraphics.buffer.backDc, origin.x, origin.y, text.c_str(),
+                 static_cast<int>(text.size()));
     }
     return makeNil();
 }
@@ -455,35 +471,30 @@ ValuePtr graphicsRefresh(const std::vector<ValuePtr>& args, EvalEnv&) {
 ValuePtr graphicsPollEvent(const std::vector<ValuePtr>& args, EvalEnv&) {
     requireArgsSize(args, 0, "graphics-poll-event");
     std::scoped_lock lock(gGraphics.mutex);
-    if (gGraphics.events.empty()) {
+    auto event = popEventLocked();
+    if (!event) {
         return makeNil();
     }
-    auto event = std::move(gGraphics.events.front());
-    gGraphics.events.pop();
-    std::vector<ValuePtr> values{makeSymbol(event.name)};
-    values.insert(values.end(), event.payload.begin(), event.payload.end());
-    return makeList(values);
+    return eventToValue(std::move(*event));
 }
 
 ValuePtr graphicsWaitEvent(const std::vector<ValuePtr>& args, EvalEnv&) {
     requireArgsSize(args, 0, "graphics-wait-event");
     std::unique_lock lock(gGraphics.mutex);
     gGraphics.eventChanged.wait(lock, [] {
-        return !gGraphics.events.empty() || !gGraphics.open;
+        return !gGraphics.events.empty() || !gGraphics.window.open;
     });
-    if (gGraphics.events.empty()) {
+    auto event = popEventLocked();
+    if (!event) {
         return makeNil();
     }
-    auto event = std::move(gGraphics.events.front());
-    gGraphics.events.pop();
-    std::vector<ValuePtr> values{makeSymbol(event.name)};
-    values.insert(values.end(), event.payload.begin(), event.payload.end());
-    return makeList(values);
+    return eventToValue(std::move(*event));
 }
 
 ValuePtr graphicsSleep(const std::vector<ValuePtr>& args, EvalEnv&) {
     requireArgsSize(args, 1, "graphics-sleep");
-    auto milliseconds = expectInt(args[0], "graphics-sleep expects milliseconds.");
+    auto milliseconds =
+        expectInt(args[0], "graphics-sleep expects milliseconds.");
     if (milliseconds < 0) {
         throw LispError("graphics-sleep expects non-negative milliseconds.");
     }

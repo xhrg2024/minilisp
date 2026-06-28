@@ -22,8 +22,8 @@ TokenPtr Parser::take() {
 ValuePtr Parser::makeList(const std::string& head, ValuePtr tail) {
     return std::make_shared<PairValue>(
         std::make_shared<SymbolValue>(head),
-        std::make_shared<PairValue>(std::move(tail), std::make_shared<NilValue>())
-    );
+        std::make_shared<PairValue>(std::move(tail),
+                                    std::make_shared<NilValue>()));
 }
 
 ValuePtr Parser::parseTails() {
@@ -51,26 +51,23 @@ ValuePtr Parser::parse() {
     auto token = take();
     switch (token->getType()) {
         case TokenType::NUMERIC_LITERAL:
-            return std::make_shared<NumericValue>(static_cast<NumericLiteralToken&>(*token).getValue());
+            return std::make_shared<NumericValue>(
+                static_cast<NumericLiteralToken&>(*token).getValue());
         case TokenType::BOOLEAN_LITERAL:
-            return std::make_shared<BooleanValue>(static_cast<BooleanLiteralToken&>(*token).getValue());
+            return std::make_shared<BooleanValue>(
+                static_cast<BooleanLiteralToken&>(*token).getValue());
         case TokenType::STRING_LITERAL:
-            return std::make_shared<StringValue>(static_cast<StringLiteralToken&>(*token).getValue());
+            return std::make_shared<StringValue>(
+                static_cast<StringLiteralToken&>(*token).getValue());
         case TokenType::IDENTIFIER:
-            return std::make_shared<SymbolValue>(static_cast<IdentifierToken&>(*token).getName());
-        case TokenType::LEFT_PAREN:
-            return parseTails();
-        case TokenType::QUOTE:
-            return makeList("quote", parse());
-        case TokenType::QUASIQUOTE:
-            return makeList("quasiquote", parse());
-        case TokenType::UNQUOTE:
-            return makeList("unquote", parse());
-        default:
-            throw SyntaxError("Unimplemented");
+            return std::make_shared<SymbolValue>(
+                static_cast<IdentifierToken&>(*token).getName());
+        case TokenType::LEFT_PAREN: return parseTails();
+        case TokenType::QUOTE: return makeList("quote", parse());
+        case TokenType::QUASIQUOTE: return makeList("quasiquote", parse());
+        case TokenType::UNQUOTE: return makeList("unquote", parse());
+        default: throw SyntaxError("Unimplemented");
     }
-
-
 }
 bool Parser::hasMore() const {
     return !tokens.empty();

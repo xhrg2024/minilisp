@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24.2)
 
 project(mini_lisp)
 
-aux_source_directory(src SOURCES)
+file(GLOB SOURCES CONFIGURE_DEPENDS src/*.cpp)
 add_executable(mini_lisp ${SOURCES})
 set_target_properties(
   mini_lisp

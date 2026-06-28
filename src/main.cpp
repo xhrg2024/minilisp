@@ -6,8 +6,8 @@
 #include "./eval_env.h"
 #include "./parser.h"
 #include "./repl.h"
-#include "./tokenizer.h"
 #include "./rjsj_test.hpp"
+#include "./tokenizer.h"
 
 struct TestCtx {
     std::shared_ptr<EvalEnv> env = EvalEnv::createGlobal();
@@ -31,7 +31,8 @@ void evalFile(Parser& parser, std::shared_ptr<EvalEnv>& env) {
 int main(int argc, char* argv[]) {
     if (argc >= 2) {
         if (std::strcmp(argv[1], "--test") == 0) {
-            RJSJ_TEST(TestCtx, Lv2, Lv3, Lv4, Lv5, Lv5Extra, Lv6, Lv7, Lv7Lib, Sicp);
+            RJSJ_TEST(TestCtx, Lv2, Lv3, Lv4, Lv5, Lv5Extra, Lv6, Lv7, Lv7Lib,
+                      Sicp);
             return 0;
         }
         std::ifstream file(argv[1]);

@@ -20,7 +20,6 @@ public:
 
     ValuePtr parse();
     bool hasMore() const;
-
 };
 
 #endif
