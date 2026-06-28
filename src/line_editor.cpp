@@ -70,6 +70,10 @@ const std::set<std::string> LISP_KEYWORDS = {
     "map", "filter", "reduce", "apply", "eval",
     "=", "<", ">", "<=", ">=",
     "even?", "odd?", "zero?", "eq?", "equal?", "not",
+    "graphics-open", "graphics-close", "graphics-clear", "graphics-color",
+    "graphics-line", "graphics-rect", "graphics-circle", "graphics-text",
+    "graphics-refresh", "graphics-poll-event", "graphics-wait-event",
+    "graphics-sleep",
 };
 
 const std::set<char> TOKEN_END_CHARS{'(', ')', '\'', '`', ',', '"'};
@@ -529,6 +533,4 @@ std::optional<std::string> LineEditor::readLine(const std::string& prompt,
         }
     }
 }
-
-
 

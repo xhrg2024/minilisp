@@ -14,3 +14,7 @@ set_target_properties(
 if(MSVC)
   target_compile_options(mini_lisp PRIVATE /utf-8 /Zc:preprocessor)
 endif()
+
+if(WIN32)
+  target_link_libraries(mini_lisp PRIVATE user32 gdi32)
+endif()

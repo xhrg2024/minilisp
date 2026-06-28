@@ -1,0 +1,15 @@
+(graphics-open 260 180 "event probe")
+(graphics-clear 245 245 245)
+(graphics-color 20 20 20)
+(graphics-text 20 40 "Click in this window.")
+(graphics-text 20 70 "Events print in terminal.")
+(graphics-refresh)
+
+(define (loop)
+  (let ((event (graphics-wait-event)))
+    (displayln event)
+    (if (and (pair? event) (eq? (car event) 'close))
+        (graphics-close)
+        (loop))))
+
+(loop)

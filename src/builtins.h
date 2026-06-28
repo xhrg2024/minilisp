@@ -7,7 +7,6 @@
 #include "./value.h"
 class EvalEnv;
 
-
 ValuePtr add(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr sub(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr mul(const std::vector<ValuePtr>& args, EvalEnv& env);

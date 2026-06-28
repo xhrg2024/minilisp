@@ -7,6 +7,7 @@
 
 #include "./error.h"
 #include "./eval_env.h"
+#include "./graphics.h"
 
 namespace {
 
@@ -671,6 +672,19 @@ ValuePtr notp(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
 
 const std::unordered_map<std::string, BuiltinFuncType*> BUILTIN_FUNCTIONS{
+    {"graphics-open", &graphicsOpen},
+    {"graphics-close", &graphicsClose},
+    {"graphics-clear", &graphicsClear},
+    {"graphics-color", &graphicsColor},
+    {"graphics-line", &graphicsLine},
+    {"graphics-rect", &graphicsRect},
+    {"graphics-circle", &graphicsCircle},
+    {"graphics-text", &graphicsText},
+    {"graphics-refresh", &graphicsRefresh},
+    {"graphics-poll-event", &graphicsPollEvent},
+    {"graphics-wait-event", &graphicsWaitEvent},
+    {"graphics-sleep", &graphicsSleep},
+
     {"+", &add},
     {"-", &sub},
     {"*", &mul},
