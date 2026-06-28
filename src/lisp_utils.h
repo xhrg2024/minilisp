@@ -7,6 +7,11 @@
 
 #include "./value.h"
 
+/*
+ * Lisp 运行时公共工具命名空间。
+ * 这里集中放置参数数量检查、类型提取、真假值判断、深度相等比较以及常用值
+ * 构造函数，保证内置过程、特殊形式和图形绑定使用一致的规则。
+ */
 namespace LispUtils {
 
 void requireArgsSize(const std::vector<ValuePtr>& args, std::size_t expected,

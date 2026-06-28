@@ -8,6 +8,12 @@
 
 namespace {
 
+/*
+ * 特殊形式辅助实现区。
+ * 特殊形式拿到的是未求值表达式，因此这里集中处理真假判断、表达式序列求值
+ * 和参数结构检查，避免把这些语法规则分散到各个表项中。
+ */
+
 using LispUtils::isFalseValue;
 using LispUtils::makeBool;
 using LispUtils::makeNil;
@@ -179,6 +185,12 @@ ValuePtr letForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
 namespace {
 
+/*
+ * quasiquote 递归展开辅助区。
+ * 这里专门处理 quasiquote 内部遇到 unquote 时的局部求值，其余 pair 会递归
+ * 保持数据结构形状。
+ */
+
 ValuePtr quasiquoteWalk(const ValuePtr& expr, EvalEnv& env) {
     if (!expr->isPair()) {
         return expr;
@@ -208,6 +220,10 @@ ValuePtr quasiquoteForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     return quasiquoteWalk(args[0], env);
 }
 
+/*
+ * 特殊形式名称到 C++ 实现函数的映射表。
+ * EvalEnv 在普通过程调用前查询该表，以决定当前列表是否需要特殊求值规则。
+ */
 const std::unordered_map<std::string, SpecialFormType*> SPECIAL_FORMS{
     {"quote", &quoteForm}, {"define", &defineForm},
     {"if", &ifForm},       {"and", &andForm},

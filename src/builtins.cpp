@@ -12,6 +12,15 @@
 
 namespace {
 
+/*
+ * 普通内置过程实现区。
+ *
+ * 本文件按功能覆盖算术、字符串、输入输出、谓词、列表、高阶过程、比较和
+ *
+ * 图形接口；所有过程都遵循 BuiltinFuncType 签名，并接收已求值参数。
+
+ */
+
 using LispUtils::equalValues;
 using LispUtils::expectNumber;
 using LispUtils::expectString;
@@ -22,6 +31,13 @@ using LispUtils::makeNil;
 using LispUtils::requireArgsSize;
 using LispUtils::requireAtLeast;
 
+/*
+ * 链式数字比较的公共实现。
+ * 具体谓词通过传入比较函数决定 <、<=、=、>=、>
+ * 的语义，从而消除重复循环
+ * 代码，并保持从左到右逐对比较的行为一致。
+
+ */
 ValuePtr compareNumbers(const std::vector<ValuePtr>& args, const char* name,
                         bool (*compare)(double, double)) {
     requireAtLeast(args, 2, name);
@@ -595,6 +611,13 @@ ValuePtr notp(const std::vector<ValuePtr>& args, EvalEnv& env) {
     return makeBool(false);
 }
 
+/*
+ * 普通内置过程名称到 C++ 实现函数的映射表。
+ *
+ * 全局环境初始化时会遍历该表，把每个函数包装成 BuiltinProcValue 并绑定到
+ *
+ * 对应的 Lisp 符号上。
+ */
 const std::unordered_map<std::string, BuiltinFuncType*> BUILTIN_FUNCTIONS{
     {"graphics-open", &graphicsOpen},
     {"graphics-close", &graphicsClose},

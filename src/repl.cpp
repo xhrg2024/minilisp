@@ -10,6 +10,11 @@
 #include "./parser.h"
 #include "./tokenizer.h"
 
+/*
+ * REPL 交互循环实现。
+ * 这里负责把多行输入拼接成完整表达式，调用分词、解析和求值流程，并把错误
+ * 信息以适合交互使用的形式输出。
+ */
 void runRepl(std::shared_ptr<EvalEnv> env) {
     LineEditor editor;
     std::string input;

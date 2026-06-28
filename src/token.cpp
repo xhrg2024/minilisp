@@ -3,6 +3,17 @@
 #include <iomanip>
 #include <sstream>
 
+/*
+ * token 对象的打印与工厂函数实现。
+ * 本文件把单字符语法符号、布尔字面量以及各类 token 的调试输出集中处理，
+ * 让 Tokenizer 只负责扫描流程。
+ */
+
+/*
+ * 字符串字面量后缀工具。
+ * 使用标准库字符串字面量后缀可以让 token 打印代码更简洁，作用范围仅限于
+ * 本翻译单元。
+ */
 using namespace std::literals;
 
 TokenPtr Token::fromChar(char c) {

@@ -10,6 +10,14 @@
 #include "./forms.h"
 #include "./value.h"
 
+/*
+ * 词法环境与求值器入口。
+ * 每个 EvalEnv
+ * 表示一层符号绑定帧，并可指向父环境；表达式求值、函数应用
+ *
+ * 和闭包调用都依赖这条词法作用域链，因此统一封装在该类中。
+
+ */
 class EvalEnv : public std::enable_shared_from_this<EvalEnv> {
 private:
     std::unordered_map<std::string, ValuePtr> symbols;

@@ -5,6 +5,11 @@
 
 #include "./error.h"
 
+/*
+ * LispUtils 的具体实现。
+ * 本文件承载跨模块共享的运行时规则，避免各个内置过程或特殊形式各自实现
+ * 一套略有差异的参数检查、类型转换和构造逻辑。
+ */
 namespace LispUtils {
 
 void requireArgsSize(const std::vector<ValuePtr>& args, std::size_t expected,

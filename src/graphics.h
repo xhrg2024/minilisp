@@ -7,6 +7,11 @@
 
 class EvalEnv;
 
+/*
+ * 图形过程声明。
+ * 这些函数会注册为 Lisp 内置过程，组成一个小型绘图与事件 API：脚本可以
+ * 打开窗口、绘制到双缓冲、刷新画面，并以 Lisp 列表形式读取输入事件。
+ */
 ValuePtr graphicsOpen(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr graphicsClose(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr graphicsClear(const std::vector<ValuePtr>& args, EvalEnv& env);

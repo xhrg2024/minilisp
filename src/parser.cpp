@@ -4,6 +4,14 @@
 
 #include "./error.h"
 
+/*
+ * Parser 的具体实现。
+ * 这里把 token 流递归转换为 Lisp 值树，并把
+ * quote、quasiquote、unquote
+ *
+ * 简写统一展开成普通列表形式，减轻求值阶段的语法分支负担。
+
+ */
 Parser::Parser(std::deque<TokenPtr> tokens) : tokens{std::move(tokens)} {}
 
 TokenPtr& Parser::peek() {

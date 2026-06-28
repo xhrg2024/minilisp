@@ -6,6 +6,16 @@
 
 #include "./error.h"
 
+/*
+ * Tokenizer 的具体实现。
+ * 本文件逐字符扫描源码，识别注释、空白、括号、quote 语法、字符串、布尔值、
+ * 数字和标识符，并把它们转换为 Parser 可消费的 token 队列。
+ */
+
+/*
+ * 能结束标识符或数字候选文本的字符集合。
+ * 分词时遇到这些字符会停止当前词素扫描，但不会把它们误吞进标识符内部。
+ */
 const std::set<char> TOKEN_END{'(', ')', '\'', '`', ',', '"'};
 
 TokenPtr Tokenizer::nextToken(int& pos) {

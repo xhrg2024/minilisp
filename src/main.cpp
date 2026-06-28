@@ -9,6 +9,13 @@
 #include "./rjsj_test.hpp"
 #include "./tokenizer.h"
 
+/*
+ * 内置测试框架使用的上下文。
+ *
+ * 每个测试表达式都会在同一个全局环境中分词、解析并求值，使同一组测试里
+ * 先前
+ * define 出来的绑定可以被后续表达式继续使用。
+ */
 struct TestCtx {
     std::shared_ptr<EvalEnv> env = EvalEnv::createGlobal();
 

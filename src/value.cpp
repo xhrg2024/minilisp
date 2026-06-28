@@ -7,7 +7,23 @@
 #include "./error.h"
 #include "./eval_env.h"
 
+/*
+ * Lisp 运行时值对象的具体实现。
+ * 本文件定义各种 Value
+ * 子类的类型查询、字符串化、列表转换和过程调用行为，
+ *
+ * 是解释器数据模型的核心实现层。
+ */
+
 namespace {
+
+/*
+ * PairValue 的私有格式化与列表转换工具。
+ *
+ * 这些递归函数只服务于本文件，负责正规列表校验、点对打印以及 pair 链条
+ * 转
+ * vector 的实现细节。
+ */
 
 std::vector<ValuePtr> pairToVector(const PairValue& value) {
     std::vector<ValuePtr> result{value.getLeft()};

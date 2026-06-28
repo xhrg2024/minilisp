@@ -8,6 +8,11 @@
 #include "./forms.h"
 #include "./lisp_utils.h"
 
+/*
+ * EvalEnv 的具体实现。
+ * 本文件负责全局环境初始化、词法作用域查找、表达式求值、过程调用以及闭包
+ * 应用，是解释器运行时控制流的核心。
+ */
 EvalEnv::EvalEnv() : parent{nullptr} {}
 
 std::shared_ptr<EvalEnv> EvalEnv::createGlobal() {

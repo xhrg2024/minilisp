@@ -14,6 +14,10 @@
 // ============================================================================
 // ANSI 颜色常量
 // ============================================================================
+/*
+ * REPL 语法高亮使用的 ANSI 颜色常量。
+ * 把显示样式集中在此处，后续调整终端主题时不需要改动按键处理或词法判断。
+ */
 namespace Ansi {
 
 constexpr const char* RESET = "\033[0m";
@@ -38,6 +42,10 @@ constexpr const char* BRIGHT_CYAN = "\033[96m";
 constexpr const char* BRIGHT_WHITE = "\033[97m";
 
 // 高亮颜色方案
+/*
+ * 高亮颜色方案。
+ * 这些别名把具体颜色和语法类别对应起来，让 highlight() 只关注 token 类型。
+ */
 constexpr const char* PROMPT_COLOR = BRIGHT_CYAN;
 constexpr const char* PAREN_COLOR = BRIGHT_WHITE;
 constexpr const char* QUOTE_COLOR = YELLOW;
@@ -52,6 +60,10 @@ constexpr const char* DEFAULT_COLOR = RESET;
 // ============================================================================
 // Lisp 关键字集合（special forms + builtins）
 // ============================================================================
+/*
+ * 行编辑器用于高亮的轻量词法元数据。
+ * 这里只服务终端显示，真正的语法合法性仍由 Tokenizer 和 Parser 负责。
+ */
 namespace {
 
 const std::set<std::string> LISP_KEYWORDS = {
@@ -155,6 +167,10 @@ const std::set<std::string> LISP_KEYWORDS = {
     "graphics-sleep",
 };
 
+/*
+ * 高亮扫描时会结束标识符的字符集合。
+ * 该集合与 Tokenizer 的分词边界保持接近，但只用于视觉展示，不影响执行。
+ */
 const std::set<char> TOKEN_END_CHARS{'(', ')', '\'', '`', ',', '"'};
 
 bool isIdentStart(char c) {

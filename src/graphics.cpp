@@ -20,6 +20,12 @@
 
 namespace {
 
+/*
+ * 图形模块内部实现命名空间。
+ * 这里封装 Win32 窗口状态、双缓冲资源、事件队列以及参数转换工具，避免把
+ * 平台相关细节暴露到解释器其他模块。
+ */
+
 using LispUtils::expectInt;
 using LispUtils::expectString;
 using LispUtils::isFalseValue;
@@ -30,27 +36,51 @@ using LispUtils::makeNumber;
 using LispUtils::makeSymbol;
 using LispUtils::requireArgsSize;
 
+/*
+ * 窗口客户区中的整数坐标点。
+ * 图形绘制函数和鼠标事件都会使用该结构传递 x/y 坐标，避免在内部接口中
+ * 反复传递含义不明确的两个整数。
+ */
 struct Point {
     int x = 0;
     int y = 0;
 };
 
+/*
+ * 二维尺寸结构。
+ * 用 width/height 明确表示宽高，区分于 Point 的绝对坐标语义。
+ */
 struct Size {
     int width = 0;
     int height = 0;
 };
 
+/*
+ * 图形窗口事件。
+ * name 会转换为 Lisp 符号，payload 保存已经构造成 ValuePtr 的事件参数，
+ * 最终通过 graphics-poll-event 或 graphics-wait-event 返回给脚本。
+ */
 struct GraphicsEvent {
     std::string name;
     std::vector<ValuePtr> payload;
 };
 
+/*
+ * Win32 窗口生命周期状态。
+ * hwnd 保存窗口句柄，ready 表示 UI 线程是否完成创建流程，open 表示窗口当前
+ * 是否仍处于可用状态。
+ */
 struct WindowState {
     HWND hwnd = nullptr;
     bool ready = false;
     bool open = false;
 };
 
+/*
+ * 离屏双缓冲绘图资源。
+ * Lisp 的绘图过程先画到 backDc 上，graphics-refresh 再触发窗口重绘，一次性
+ * 拷贝到真实窗口，减少频繁擦除导致的闪烁。
+ */
 struct BackBuffer {
     HDC backDc = nullptr;
     HBITMAP backBitmap = nullptr;
@@ -60,6 +90,11 @@ struct BackBuffer {
     COLORREF drawColor = RGB(0, 0, 0);
 };
 
+/*
+ * 图形子系统的完整共享状态。
+ * mutex 保护窗口、缓冲区和事件队列；条件变量用于等待窗口创建完成或新事件
+ * 到达；uiThread 独立运行 Win32 消息循环。
+ */
 struct GraphicsState {
     std::mutex mutex;
     std::condition_variable readyChanged;
@@ -70,6 +105,10 @@ struct GraphicsState {
     BackBuffer buffer;
 };
 
+/*
+ * 单例图形状态。
+ * 当前解释器一次只维护一个图形窗口，因此用文件内静态状态集中管理资源。
+ */
 GraphicsState gGraphics;
 
 void requireWindowOpen() {
